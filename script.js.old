@@ -1,0 +1,56 @@
+const mult = 0.01;
+
+var note_height = 16 * mult;
+var note_width = 30 * mult;
+var beat_count = 9040;
+var pitch_count = 9640;
+
+window.onload = (event) => {
+    draw_line();
+};
+
+function draw_line() {
+    const canvas_var = document.getElementById("note-grid");
+
+    if(!canvas_var.getContext) {
+        return;
+    }
+
+    const ctx = canvas_var.getContext("2d");
+    var color_one = "rgb(80,80,80)";
+    var color_two = "rgb(50,50,50)";
+    var fill_styles = [color_one, color_two, color_one, color_two, color_one, color_one, color_two, color_one, color_two,color_one, color_two, color_one];
+
+    // Pitch lanes
+    ctx.strokeStyle = "rgb(60,60,60)";
+    ctx.strokeWidth = 1 * mult;
+    for (i=0; i<pitch_count; i++) { // Fill
+        ctx.fillStyle = fill_styles[i%12];
+        ctx.fillRect(0, i * note_height, canvas_var.width, note_height);
+    }
+    for (i=0; i<pitch_count; i++) { // Stroke
+        if (i%12 === 5) {
+            ctx.strokeStyle = "rgb(20,20,20)";
+        } else {
+            ctx.strokeStyle = color_two;
+        }
+        ctx.beginPath();
+        ctx.moveTo(0, i * note_height);
+        ctx.lineTo(canvas_var.width, i * note_height);
+        ctx.stroke();
+    }
+
+    // Time markers
+    ctx.strokeStyle = "rgb(50,50,50)";
+    for (i=0; i<beat_count; i++) {
+        if (i%4 === 0) {
+            ctx.strokeStyle = "rgb(20,20,20)";
+        } else {
+            ctx.strokeStyle = "rgb(50,50,50)";
+        }
+        ctx.beginPath();
+        ctx.moveTo(i*note_width, 0);
+        ctx.lineTo(i*note_width, canvas_var.height);
+        ctx.stroke();
+    }
+}
