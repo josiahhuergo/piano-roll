@@ -8,6 +8,8 @@ TODO
 - Add synth that produces sound, like tone.js
 - Play notes when pressing keys on piano bar left of frame
 - Note creation, deletion, dragging across grid, etc.
+- Scroll with moving playhead in chunks
+- Set playhead speed with respect to piano roll bpm
 */
 
 class Note {
@@ -28,6 +30,7 @@ class PianoRoll {
         this.bpm = 120;
         this.pitchMargins = 0;
         this.pianoBarWidth = 30;
+        this.timeBarHeight = 30;
 
         // Remove notes that can't be displayed
         let newNoteSet = [];
@@ -42,12 +45,18 @@ class PianoRoll {
 
         // Create entire frame
         this.#createWholeFrame();
+        // Create notesFrame and insert into document
+        this.#createNotesFrame();
+        // Create play/stop button
+        this.#createTransport();
+        // Create timeBarFrame up top
+        this.#createTimeBarFrame();
+        // Create time bar
+        this.#createTimeBar();
         // Create pianoBarFrame on the left
         this.#createPianoBarFrame();
         // Create piano bar
         this.#drawPianoBar();
-        // Create notesFrame and insert into document
-        this.#createNotesFrame();
         // Create piano grid this.backdrop
         this.#drawBackdrop();
         // Create note grid
@@ -55,13 +64,30 @@ class PianoRoll {
         // Draw play head
         this.#drawPlayhead();
 
-        // this.playHead.x = 6 * this.beatWidth;
-        // this.playHead.drawHead();
-        this.playHead.play();
-
         // Scroll sync
         this.#syncScrolling();
         this.scrollToFirstNote();
+    }
+
+    #createTransport() {
+
+    }
+
+    #createTimeBarFrame() {
+        this.timeBarFrame = document.createElement("div");
+        this.timeBarFrame.id = "time-bar-frame";
+        this.timeBarFrame.style.position = "absolute";
+        this.timeBarFrame.style.left = this.pianoBarWidth + "px";
+        this.timeBarFrame.style.width = this.frameWidth + "px";
+        this.timeBarFrame.style.height = this.timeBarHeight + "px";
+        this.timeBarFrame.style.overflow = "scroll";
+        this.timeBarFrame.style.scrollbarWidth = "none";
+        this.timeBarFrame.style.backgroundColor = "rgb(111,111,111)";
+        this.wholeFrame.append(this.timeBarFrame);
+    }
+
+    #createTimeBar() {
+        
     }
 
     #syncScrolling() {
@@ -94,22 +120,19 @@ class PianoRoll {
         this.pianoBarFrame = document.createElement("div");
         this.pianoBarFrame.id = "piano-bar-frame"
         this.pianoBarFrame.style.position = "absolute";
+        this.pianoBarFrame.style.top = this.timeBarHeight + "px";
         this.pianoBarFrame.style.width = this.pianoBarWidth + "px";
         this.pianoBarFrame.style.height = this.frameHeight + "px";
         this.pianoBarFrame.style.overflow = "scroll";
         this.pianoBarFrame.style.scrollbarWidth = "none";
-        this.pianoBarFrame.style.padding = 15;
-        this.pianoBarFrame.style.margin = -15;
         this.wholeFrame.append(this.pianoBarFrame);
     }
 
     #createWholeFrame() {
-        // Create flexbox that holds pianoBarFrame and notesFrame
+        // Create frame for entire piano roll
         this.wholeFrame = document.createElement("div");
         this.wholeFrame.id = "piano-roll-frame"
         this.wholeFrame.style.position = "absolute";
-        this.wholeFrame.style.padding = 15;
-        this.wholeFrame.style.margin = -15;
         $("body").append(this.wholeFrame);
     }
 
@@ -117,6 +140,7 @@ class PianoRoll {
         this.notesFrame = document.createElement("div");
         this.notesFrame.id = "note-grid-frame"
         this.notesFrame.style.position = "absolute";
+        this.notesFrame.style.top = this.timeBarHeight + "px";
         this.notesFrame.style.left = this.pianoBarWidth + "px";
         this.notesFrame.style.width = this.frameWidth + "px";
         this.notesFrame.style.height = this.frameHeight + "px";
@@ -345,6 +369,7 @@ class PianoRoll {
 class PlayHead {
     constructor(width, height, beatWidth) {
         this.start = 0; // Start position
+        this.playing = false;
         this.beatWidth = beatWidth;
         this.x = 0; // Playhead drawn position
         this.canvas = document.createElement("canvas");
@@ -353,7 +378,7 @@ class PlayHead {
         this.ctx = this.canvas.getContext("2d");
         this.canvas.width = width;
         this.canvas.height = height;
-        this.playTime = null;
+        this.playTime = 0;
         this.current_time;
         this.update = this.update.bind(this);
 
@@ -371,22 +396,40 @@ class PlayHead {
     }
 
     play() {
+        this.playing = true;
         requestAnimationFrame(this.update);
     }
 
+    stop() {
+        this.playing = false;
+        this.x = this.start;
+        this.playTime = 0;
+        this.drawHead();
+    }
+
+    toggle() {
+        if (this.playing) {
+            this.stop();
+        } else {
+            this.play();
+        }
+    }
+
     update(now) {
+        if (!this.playing) return;
+
         if (!this.playTime) { this.playTime = now }
         let elapsed = now - this.playTime;
         this.x = (elapsed/200) * this.beatWidth;
 
-        if (this.x < this.canvas.width) {
-            requestAnimationFrame(this.update);
-        } else {
-            this.x = this.start;
-            this.playTime = null;
+        if (this.x >= this.canvas.width) {
+            this.stop();
         }
-
-        this.drawHead();
+        
+        if (this.playing) {
+            this.drawHead();
+            requestAnimationFrame(this.update);
+        }
     }
 }
 
@@ -395,6 +438,12 @@ var pianoroll;
 $(document).ready(function() {    
     let notes = makeNotes();
     pianoroll = new PianoRoll(notes, window.width, window.height);
+
+    document.body.onkeyup = function(e) {
+        if (e.key == " ") {
+            pianoroll.playHead.toggle();
+        }
+    }
 });
 
 
@@ -404,10 +453,10 @@ function clamp(number, min, max) {
   }
 
 function makeNotes() {
-    let pitches = [21];
+    let pitches = [41];
     let scale = [2,1,2];
     let scaleIdx = 0;
-    for (let i=0; i<80; i++) {
+    for (let i=0; i<30; i++) {
         pitches.push(pitches.slice(-1)[0] + scale[scaleIdx]);
         scaleIdx = (scaleIdx + 1) % scale.length;
     }
