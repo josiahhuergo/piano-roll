@@ -28,7 +28,6 @@ class PianoRoll {
         this.beatWidth = beatWidth;
         this.noteHeight = noteHeight;
         this.bpm = 120;
-        this.pitchMargins = 0;
         this.pianoBarWidth = 30;
         this.timeBarHeight = 30;
 
@@ -45,16 +44,16 @@ class PianoRoll {
 
         // Create entire frame
         this.#createWholeFrame();
+        // Create timeBarFrame up top
+        this.#createTimeBarFrame();
+        // Create pianoBarFrame on the left
+        this.#createPianoBarFrame();
         // Create notesFrame and insert into document
         this.#createNotesFrame();
         // Create play/stop button
         this.#createTransport();
-        // Create timeBarFrame up top
-        this.#createTimeBarFrame();
         // Create time bar
         this.#createTimeBar();
-        // Create pianoBarFrame on the left
-        this.#createPianoBarFrame();
         // Create piano bar
         this.#drawPianoBar();
         // Create piano grid this.backdrop
@@ -82,12 +81,42 @@ class PianoRoll {
         this.timeBarFrame.style.height = this.timeBarHeight + "px";
         this.timeBarFrame.style.overflow = "scroll";
         this.timeBarFrame.style.scrollbarWidth = "none";
-        this.timeBarFrame.style.backgroundColor = "rgb(111,111,111)";
+        this.timeBarFrame.style.backgroundColor = "dark gray";
         this.wholeFrame.append(this.timeBarFrame);
     }
 
     #createTimeBar() {
+        this.timeBar = document.createElement("canvas");
+        this.timeBar.id = "time-bar";
+        this.timeBar.width = this.canvasWidth;
+        this.timeBar.height = this.timeBarHeight;
+        const ctx = this.timeBar.getContext("2d");
+
+        ctx.strokeStyle = "rgb(50,50,50)";
+        for (let i=0; i<this.beatDrawCount; i++) {
+            if (i%4 === 0) {
+                ctx.beginPath();
+                ctx.moveTo(i*this.beatWidth, this.timeBarHeight / 3);
+                ctx.lineTo(i*this.beatWidth, this.timeBarHeight);
+                ctx.stroke();
+
+                let timeLabel = document.createElement("div");
+                timeLabel.style.color = "gray";
+                timeLabel.style.fontFamily = "Verdana";
+                timeLabel.style.fontSize = "12px";
+                timeLabel.style.position = "absolute";
+                timeLabel.style.width = this.beatWidth * 4 + "px";
+                timeLabel.style.height = this.timeBarHeight + "px";
+                timeLabel.style.left = i*this.beatWidth + "px";
+                timeLabel.style.textAlign = "left";
+                timeLabel.style.paddingLeft = "5px";
+                timeLabel.style.paddingTop = "10px";
+                timeLabel.innerHTML = i;
+                this.timeBarFrame.append(timeLabel);
+            }
+        }
         
+        this.timeBarFrame.append(this.timeBar);
     }
 
     #syncScrolling() {
@@ -105,6 +134,7 @@ class PianoRoll {
             }
             this.ignore = true;
             this.pianoBarFrame.scrollTop = this.notesFrame.scrollTop;
+            this.timeBarFrame.scrollLeft = this.notesFrame.scrollLeft;
         });
         this.pianoBarFrame.addEventListener("scroll", (event) => {
             if (this.ignore) {
@@ -113,6 +143,14 @@ class PianoRoll {
             }
             this.ignore = true;
             this.notesFrame.scrollTop = this.pianoBarFrame.scrollTop;
+        });
+        this.timeBarFrame.addEventListener("scroll", (event) => {
+            if (this.ignore) {
+                this.ignore = false;
+                return;
+            }
+            this.ignore = true;
+            this.notesFrame.scrollLeft = this.timeBarFrame.scrollTop;
         });
     }
 
