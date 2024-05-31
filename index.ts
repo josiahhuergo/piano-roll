@@ -2,15 +2,30 @@
 TODO
 
 - Clean up code
-- Add time bar with positions in beats, like 0, 4, 8, 12, etc.
 - Add transport controls, play/stop toggle between playing and not playing, 
     with a start position variable.
 - Add synth that produces sound, like tone.js
 - Play notes when pressing keys on piano bar left of frame
 - Note creation, deletion, dragging across grid, etc.
-- Scroll with moving playhead in chunks
+    - Double click to add notes
+    - Double click to delete
+    - Click and drag to change time/pitch
+    - Click and drag right side to change duration
+- Add note selection
+    - Shift click to add/remove note from selection
+    - Click and drag over backdrop to create selection box
+        - Create canvas layer in note grid, overlaying the notes
+        - On mousedown, store click coordinates in variable.
+        - On mousemove, draw selection rectangle between mouse's current coordinates and the starting coords.
+        - On mouseup, clear drawing and find the notes which trigger within that interval of time and pitch.
+- Add context menus
+- Autoscroll to new region when playhead reaches end of frame
 - Set playhead speed with respect to piano roll bpm
+- Left click empty note grid to move playhead to nearest quantized x position
 */
+class NoteSelection {
+    
+}
 
 class Note {
     pitch: number;
@@ -29,6 +44,7 @@ class PianoRoll {
     frameWidth: number;
     frameHeight: number;
     beatWidth: number;
+    playing: boolean;
     noteHeight: number;
     bpm: number;
     pianoBarWidth: number;
@@ -37,6 +53,9 @@ class PianoRoll {
     wholeFrame: HTMLDivElement;
     pianoBarFrame: HTMLDivElement;
     notesFrame: HTMLDivElement;
+    transportBtn: HTMLButtonElement;
+    transportCanvas: HTMLCanvasElement;
+    transportView: CanvasRenderingContext2D;
     timeBar: HTMLCanvasElement;
     pianoBar: HTMLCanvasElement;
     backdrop: HTMLCanvasElement;
@@ -54,6 +73,7 @@ class PianoRoll {
         this.pianoBarWidth = 30;
         this.timeBarHeight = 30;
         this.ignore = false;
+        this.playing = false;
 
         // Remove notes that can't be displayed
         let newNoteSet: Note[] = [];
@@ -69,6 +89,11 @@ class PianoRoll {
         // Create entire frame
         this.wholeFrame = document.createElement("div");
         this.#createWholeFrame();
+        // Create transport controls
+        this.transportCanvas = document.createElement("canvas");
+        this.transportView = this.transportCanvas.getContext("2d")!;
+        this.transportBtn = document.createElement("button");
+        this.#createTransport();
         // Create timeBarFrame up top
         this.timeBarFrame = document.createElement("div");
         this.#createTimeBarFrame();
@@ -102,7 +127,72 @@ class PianoRoll {
     }
 
     #createTransport() {
+        this.transportBtn.id = "transport-btn";
+        this.transportBtn.style.position = "absolute";
+        this.transportBtn.style.top = "0px";
+        this.transportBtn.style.left = "0px";
+        this.transportBtn.style.width = this.pianoBarWidth + "px";
+        this.transportBtn.style.height = this.timeBarHeight + "px";
+        this.transportBtn.style.border = "none";
+        this.transportBtn.style.backgroundColor = "black";
+        
+        this.transportBtn.addEventListener('click', () => { this.#toggle.bind(this) });
 
+        this.transportCanvas.id = "time-control";
+        this.transportCanvas.style.position = "absolute";
+        this.transportCanvas.style.top = "0px";
+        this.transportCanvas.style.left = "0px";
+        this.transportCanvas.width = this.pianoBarWidth;
+        this.transportCanvas.height = this.timeBarHeight;
+
+        this.#drawPlay();        
+
+        this.transportBtn.append(this.transportCanvas);
+        this.wholeFrame.append(this.transportBtn);
+    }
+
+    #toggle() {
+        console.log("we're toggling, baby");
+        if (this.playing) { 
+            this.playing = false;
+            this.#drawPlay();
+            this.playHead.toggle();
+        } else {
+            this.playing = true;
+            this.#drawStop();
+            this.playHead.toggle();
+        }
+    }
+
+    #drawPlay() {
+        let ctx: CanvasRenderingContext2D = this.transportView;
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, this.pianoBarWidth, this.timeBarHeight);
+        ctx.beginPath();
+        ctx.moveTo(8,7);
+        ctx.lineTo(8,23);
+        ctx.lineTo(22,15);
+        ctx.closePath();
+        ctx.fillStyle = "white";
+        ctx.strokeStyle = "white";
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    #drawStop() {
+        let ctx: CanvasRenderingContext2D = this.transportView;
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, this.pianoBarWidth, this.timeBarHeight);
+        ctx.beginPath();
+        ctx.moveTo(8,7);
+        ctx.lineTo(8,23);
+        ctx.lineTo(22,23);
+        ctx.lineTo(22,7);
+        ctx.closePath();
+        ctx.fillStyle = "white";
+        ctx.strokeStyle = "white";
+        ctx.fill();
+        ctx.stroke();
     }
 
     #createTimeBarFrame() {
@@ -489,7 +579,7 @@ $(document).ready(function() {
     let notes = makeNotes();
     pianoroll = new PianoRoll(notes);
 
-    document.body.onkeyup = function(e) {
+    document.body.onkeydown = function(e) {
         if (e.key == " ") {
             pianoroll.playHead.toggle();
         }
