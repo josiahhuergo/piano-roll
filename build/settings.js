@@ -3,7 +3,7 @@ import esbuildPluginTsc from 'esbuild-plugin-tsc';
 export function createBuildSettings(options) {
   return {
     entryPoints: ['src/index.ts'],
-    outfile: 'www/bundle.js',
+    outfile: 'bundle.js',
     bundle: true,
     plugins: [
       esbuildPluginTsc({
