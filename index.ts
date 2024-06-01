@@ -397,8 +397,14 @@ class PianoRoll {
     }
 
     #setupListeners() {
+        // Listener for transport button click
         this.transport.button.addEventListener("click", this.toggle.bind(this));
-        document.body.addEventListener("keydown", this.toggle.bind(this));
+        // Listener for space bar press
+        document.body.addEventListener("keydown", (event) => {
+            if (event.key === " ") {
+                this.toggle();
+            }
+        });
     }
 
     #createFrame() {
@@ -581,33 +587,9 @@ class PlayHead {
     }
 }
 
-
-var pianoRoll: PianoRoll;
-
-$(function() {    
-    let notes = makeNotes();
-    pianoRoll = new PianoRoll(notes);
-});
-
-
-
+// Some utility functions
 function clamp(number: number, min: number, max: number) : number {
     return Math.max(min, Math.min(number, max));
-  }
-
-function makeNotes() {
-    let pitches = [41];
-    let scale = [2,1,2];
-    let scaleIdx = 0;
-    for (let i=0; i<30; i++) {
-        pitches.push(pitches.slice(-1)[0] + scale[scaleIdx]);
-        scaleIdx = (scaleIdx + 1) % scale.length;
-    }
-    let notes: Note[] = [];
-    for (let i=0; i<pitches.length; i++) {
-        notes.push(new Note(pitches[i], i, 1));
-    }
-    return notes;
 }
 
 function max(array: number[]) : number {
@@ -633,3 +615,26 @@ function min(array: number[]) : number {
     
     return minimum;
 }
+
+// Test function that creates the notes we use in the PianoRoll
+function makeNotes() {
+    let pitches = [41];
+    let scale = [2,1,2];
+    let scaleIdx = 0;
+    for (let i=0; i<30; i++) {
+        pitches.push(pitches.slice(-1)[0] + scale[scaleIdx]);
+        scaleIdx = (scaleIdx + 1) % scale.length;
+    }
+    let notes: Note[] = [];
+    for (let i=0; i<pitches.length; i++) {
+        notes.push(new Note(pitches[i], i, 1));
+    }
+    return notes;
+}
+
+// Main program
+var pianoRoll: PianoRoll;
+$(function() {    
+    let notes = makeNotes();
+    pianoRoll = new PianoRoll(notes);
+});
