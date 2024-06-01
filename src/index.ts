@@ -288,9 +288,9 @@ class TimeBar {
 class PlayHead {
     pianoRoll: PianoRoll;
     startTime: number = 0;
+    playTime: number = 0;
     headPos: number = 0;
     noteCtx: CanvasRenderingContext2D;
-    // timeCtx: CanvasRenderingContext2D; // render on time bar too
 
     constructor(pianoRoll: PianoRoll) {
         this.pianoRoll = pianoRoll;
@@ -308,7 +308,6 @@ class PlayHead {
     }
 
     drawHead() {
-        // Draw on note grid
         this.noteCtx.clearRect(0,0,this.pianoRoll.canvasWidth, this.pianoRoll.canvasHeight);
         this.noteCtx.beginPath();
         this.noteCtx.moveTo(this.headPos, 0);
@@ -316,8 +315,6 @@ class PlayHead {
         this.noteCtx.strokeStyle = "white";
         this.noteCtx.lineWidth = 1;
         this.noteCtx.stroke();
-
-        // Draw on time bar
     }
 
     play() {
@@ -326,15 +323,18 @@ class PlayHead {
 
     stop() {
         this.headPos = this.startTime;
+        this.playTime = 0;
         this.drawHead();
     }
 
     update(now: any) {
         if (Tone.getTransport().state === "stopped") return;
-        this.headPos = Tone.getTransport().seconds*(Tone.getTransport().bpm.value / 60) * this.pianoRoll.config.beatWidth;
+        if (this.playTime === 0) { this.playTime = now; }
+        let factor = (1000 / this.pianoRoll.config.beatWidth * 60) / Tone.getTransport().bpm.value;
+        this.headPos = (now - this.playTime) / factor;
 
         if (this.headPos >= this.pianoRoll.canvasWidth) {
-            this.stop();
+            this.pianoRoll.transport.stop();
         }
         
         if (Tone.getTransport().state === "started") {
@@ -415,9 +415,9 @@ class Transport {
         this.ctx.fillStyle = this.bgColor;
         this.ctx.fillRect(0, 0, this.pianoRoll.config.pianoBarWidth, this.pianoRoll.config.timeBarHeight);
         this.ctx.beginPath();
-        this.ctx.moveTo(8,7);
-        this.ctx.lineTo(8,23);
-        this.ctx.lineTo(22,15);
+        this.ctx.moveTo(8/30*this.pianoRoll.config.timeBarHeight,7/30*this.pianoRoll.config.pianoBarWidth);
+        this.ctx.lineTo(8/30*this.pianoRoll.config.timeBarHeight,23/30*this.pianoRoll.config.pianoBarWidth);
+        this.ctx.lineTo(22/30*this.pianoRoll.config.timeBarHeight,15/30*this.pianoRoll.config.pianoBarWidth);
         this.ctx.closePath();
         this.ctx.fillStyle = "white";
         this.ctx.strokeStyle = "white";
@@ -441,15 +441,15 @@ class Transport {
     }
 
     play() {
-        Tone.getTransport().start();
         this.playHead.play();
         this.#drawStop();
+        Tone.getTransport().start();
     }
 
     stop() {
-        Tone.getTransport().stop();
         this.playHead.stop();
         this.#drawPlay();
+        Tone.getTransport().stop();
     }
 
     toggle() {
@@ -466,8 +466,8 @@ class Transport {
 class Config {
     frameWidth: number = 800;
     frameHeight: number = 600;
-    beatWidth: number = 28;
-    noteHeight: number = 18;
+    beatWidth: number = 20;
+    noteHeight: number = 10;
     pianoBarWidth: number = 30;
     timeBarHeight: number = 30;
 }
@@ -693,10 +693,10 @@ function beatsToTransTime(beatsIn: number) : string {
 
 // Test function that creates the notes we use in the PianoRoll
 function makeNotes() : Note[] {
-    let pitches = [41];
-    let scale = [2,1,2];
+    let pitches = [90];
+    let scale = [-2,-2,-3,2,-2,-2,-3,9];
     let scaleIdx = 0;
-    for (let i=0; i<30; i++) {
+    for (let i=0; i<scale.length*16; i++) {
         pitches.push(pitches.slice(-1)[0] + scale[scaleIdx]);
         scaleIdx = (scaleIdx + 1) % scale.length;
     }
@@ -714,4 +714,6 @@ $(function() {
     document.body.addEventListener("keydown", Tone.start);
     let notes = makeNotes();
     pianoRoll = new PianoRoll(notes);
+    Tone.getTransport().bpm.value = 820;
+    console.log(Tone.getTransport().bpm.value)
 });
