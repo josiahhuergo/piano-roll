@@ -1,4 +1,4 @@
-// import * as Tone from "tone";
+import * as Tone from "tone";
 
 /*
 TODO
@@ -27,19 +27,6 @@ TODO
 */
 class NoteSelection {
     
-}
-
-class SynthEngine {
-    // synth: Tone.Synth;
-
-    constructor() {
-        // this.synth = new Tone.Synth().toDestination();
-        this.playNote(60);
-    }
-
-    playNote(pitch: number) {
-        // this.synth.triggerAttackRelease(numToPitchName(pitch), "8n");
-    }
 }
 
 class Note {
@@ -163,10 +150,11 @@ class NoteGrid {
 class PianoBar {
     pianoRoll: PianoRoll;
     frame: HTMLDivElement;
-    width: number = 30;
+    width: number;
 
     constructor(pianoRoll: PianoRoll) {
         this.pianoRoll = pianoRoll;
+        this.width = pianoRoll.config.pianoBarWidth;
         this.frame = document.createElement("div");
 
         this.#createFrame();
@@ -229,10 +217,11 @@ class PianoBar {
 class TimeBar {
     pianoRoll: PianoRoll;
     frame: HTMLDivElement;
-    height: number = 30;
+    height: number;
 
     constructor(pianoRoll: PianoRoll) {
         this.pianoRoll = pianoRoll;
+        this.height = pianoRoll.config.timeBarHeight;
         this.frame = document.createElement("div");
 
         this.#createFrame();
@@ -282,14 +271,13 @@ class TimeBar {
                 timeLabel.style.width = this.pianoRoll.config.beatWidth * width + "px";
             } else {
                 timeLabel.style.width = this.pianoRoll.config.beatWidth * 16 + "px";
-                console.log(timeLabel.style.width)
             }
             timeLabel.style.height = this.height + "px";
             timeLabel.style.left = i*this.pianoRoll.config.beatWidth * 4 + "px";
             timeLabel.style.textAlign = "left";
             timeLabel.style.paddingLeft = "5px";
             timeLabel.style.paddingTop = "10px";
-            timeLabel.innerHTML = i.toString();
+            timeLabel.innerHTML = (i*4).toString();
             canvasFrame.append(timeLabel);
         }
         canvasFrame.append(canvas);
@@ -297,18 +285,110 @@ class TimeBar {
     }
 }
 
+class PlayHead {
+    pianoRoll: PianoRoll;
+    startTime: number = 0;
+    headPos: number = 0;
+    noteCtx: CanvasRenderingContext2D;
+    // timeCtx: CanvasRenderingContext2D; // render on time bar too
+
+    constructor(pianoRoll: PianoRoll) {
+        this.pianoRoll = pianoRoll;
+
+        var noteCanvas: HTMLCanvasElement = document.createElement("canvas");
+        noteCanvas.id = "playhead"
+        noteCanvas.style.position = "absolute";
+        this.noteCtx = noteCanvas.getContext("2d")!;
+        noteCanvas.width = this.pianoRoll.canvasWidth;
+        noteCanvas.height = this.pianoRoll.canvasHeight;
+        this.update = this.update.bind(this);
+        this.pianoRoll.noteGrid.frame.append(noteCanvas);
+
+        this.drawHead();
+    }
+
+    drawHead() {
+        // Draw on note grid
+        this.noteCtx.clearRect(0,0,this.pianoRoll.canvasWidth, this.pianoRoll.canvasHeight);
+        this.noteCtx.beginPath();
+        this.noteCtx.moveTo(this.headPos, 0);
+        this.noteCtx.lineTo(this.headPos, this.pianoRoll.canvasHeight);
+        this.noteCtx.strokeStyle = "white";
+        this.noteCtx.lineWidth = 1;
+        this.noteCtx.stroke();
+
+        // Draw on time bar
+    }
+
+    play() {
+        requestAnimationFrame(this.update);
+    }
+
+    stop() {
+        this.headPos = this.startTime;
+        this.drawHead();
+    }
+
+    update(now: any) {
+        if (Tone.getTransport().state === "stopped") return;
+        this.headPos = Tone.getTransport().seconds*(Tone.getTransport().bpm.value / 60) * this.pianoRoll.config.beatWidth;
+
+        if (this.headPos >= this.pianoRoll.canvasWidth) {
+            this.stop();
+        }
+        
+        if (Tone.getTransport().state === "started") {
+            this.drawHead();
+            requestAnimationFrame(this.update);
+        }
+    }
+}
+
+class SynthEngine {
+    synth: Tone.Synth;
+
+    constructor() {
+        this.synth = new Tone.Synth().toDestination();
+        this.synth.volume.value = -10;
+    }
+
+    playNote(pitch: number) {
+        this.synth.triggerAttackRelease(numToPitchName(pitch), "8n");
+    }
+}
+
 class Transport {
     pianoRoll: PianoRoll;
+    synthEngine: SynthEngine;
+    playHead: PlayHead;
     ctx: CanvasRenderingContext2D;
     button: HTMLButtonElement;
+    playing: boolean = false;
     bgColor: string = "rgb(20,20,20)";
 
     constructor(pianoRoll: PianoRoll) {
         this.pianoRoll = pianoRoll;
+        this.playHead = new PlayHead(this.pianoRoll);
+        this.synthEngine = new SynthEngine();
+
         var canvas: HTMLCanvasElement = document.createElement("canvas");
-        this.button = document.createElement("button");
+        canvas.style.position = "absolute";
+        canvas.style.top = "0px";
+        canvas.style.left = "0px";
+        canvas.width = this.pianoRoll.config.pianoBarWidth;
+        canvas.height = this.pianoRoll.config.timeBarHeight;
         this.ctx = canvas.getContext("2d")!;
 
+        this.button = document.createElement("button");
+        this.#createButton();
+        this.#drawPlay();        
+        this.#setupListeners();
+
+        this.button.append(canvas);
+        this.pianoRoll.frame.append(this.button);
+    }
+
+    #createButton() {
         this.button.id = "transport-btn";
         this.button.style.position = "absolute";
         this.button.style.top = "0px";
@@ -318,20 +398,20 @@ class Transport {
         this.button.style.border = "none";
         this.button.style.backgroundColor = "black";
         this.button.style.zIndex = "9";
-
-        canvas.style.position = "absolute";
-        canvas.style.top = "0px";
-        canvas.style.left = "0px";
-        canvas.width = this.pianoRoll.config.pianoBarWidth;
-        canvas.height = this.pianoRoll.config.timeBarHeight;
-
-        this.drawPlay();        
-
-        this.button.append(canvas);
-        this.pianoRoll.frame.append(this.button);
     }
 
-    drawPlay() {
+    #setupListeners() {
+        // Listener for transport button click
+        this.button.addEventListener("click", this.toggle.bind(this));
+        // Listener for space bar press
+        document.body.addEventListener("keydown", (event) => {
+            if (event.key === " ") {
+                this.toggle();
+            }
+        });
+    }
+
+    #drawPlay() {
         this.ctx.fillStyle = this.bgColor;
         this.ctx.fillRect(0, 0, this.pianoRoll.config.pianoBarWidth, this.pianoRoll.config.timeBarHeight);
         this.ctx.beginPath();
@@ -345,7 +425,7 @@ class Transport {
         this.ctx.stroke();
     }
 
-    drawStop() {
+    #drawStop() {
         this.ctx.fillStyle = this.bgColor;
         this.ctx.fillRect(0, 0, this.pianoRoll.config.pianoBarWidth, this.pianoRoll.config.timeBarHeight);
         this.ctx.beginPath();
@@ -359,12 +439,33 @@ class Transport {
         this.ctx.fill();
         this.ctx.stroke();
     }
+
+    play() {
+        Tone.getTransport().start();
+        this.playHead.play();
+        this.#drawStop();
+    }
+
+    stop() {
+        Tone.getTransport().stop();
+        this.playHead.stop();
+        this.#drawPlay();
+    }
+
+    toggle() {
+        if (!this.playing) {
+            this.playing = true;
+            this.play();
+        } else {
+            this.playing = false;
+            this.stop();
+        }
+    }
 }
 
 class Config {
     frameWidth: number = 800;
     frameHeight: number = 600;
-    bpm: number = 120;
     beatWidth: number = 28;
     noteHeight: number = 18;
     pianoBarWidth: number = 30;
@@ -375,17 +476,29 @@ class PianoRoll {
     frame: HTMLDivElement;
     noteSet: Note[];
     config: Config;
-    synthEngine: SynthEngine;
     noteGrid: NoteGrid;
     pianoBar: PianoBar;
     timeBar: TimeBar;
+    part: Tone.Part;
     transport: Transport;
-    playHead: PlayHead;
     playing: boolean = false;
     scrollSync: boolean = false;
 
     constructor(noteSet: Note[] = []) {
         this.noteSet = noteSet;
+
+        // Convert Notes to Tone format
+        let tones: string[][] = [];
+        noteSet.forEach((note) => {
+            tones.push([beatsToTransTime(note.time), numToPitchName(note.pitch)])
+        });
+
+        this.part = new Tone.Part(((time, note) => {
+            // the notes given as the second element in the array
+            // will be passed in as the second argument
+            this.transport.synthEngine.synth.triggerAttackRelease(note, "0:1:0", time);
+        }), tones).start(0);
+        
 
         // Remove notes that can't be displayed
         let newNoteSet: Note[] = [];
@@ -401,40 +514,22 @@ class PianoRoll {
         // Create config
         this.config = new Config();
 
-        // Create synth engine
-        this.synthEngine = new SynthEngine();
-
         // Create entire frame
         this.frame = document.createElement("div");
         this.#createFrame();
 
-        // Create transport controls
-        this.transport = new Transport(this);  
         // Create Time Bar
         this.timeBar = new TimeBar(this);
         // Create piano bar
         this.pianoBar = new PianoBar(this);
         // Create note grid
         this.noteGrid = new NoteGrid(this);
-        // Create play head
-        this.playHead = new PlayHead(this);
+        // Create transport controls
+        this.transport = new Transport(this);  
 
         // Scroll sync
         this.#syncScrolling();
         this.#scrollToFirstNote();
-
-        this.#setupListeners();
-    }
-
-    #setupListeners() {
-        // Listener for transport button click
-        this.transport.button.addEventListener("click", this.toggle.bind(this));
-        // Listener for space bar press
-        document.body.addEventListener("keydown", (event) => {
-            if (event.key === " ") {
-                this.toggle();
-            }
-        });
     }
 
     #createFrame() {
@@ -488,14 +583,12 @@ class PianoRoll {
 
     play() {
         this.playing = true;
-        this.transport.drawStop();
-        this.playHead.play();
+        this.transport.play();
     }
 
     stop() {
         this.playing = false;
-        this.transport.drawPlay();
-        this.playHead.stop();
+        this.transport.stop();
     }
 
     toggle() {
@@ -556,71 +649,6 @@ class PianoRoll {
     }
 }
 
-class PlayHead {
-    pianoRoll: PianoRoll;
-    startTime: number = 0;
-    headPos: number = 0;
-    playTime: number = 0;
-    noteCtx: CanvasRenderingContext2D;
-    // timeCtx: CanvasRenderingContext2D; // render on time bar too
-
-    constructor(pianoRoll: PianoRoll) {
-        this.pianoRoll = pianoRoll;
-
-        var noteCanvas: HTMLCanvasElement = document.createElement("canvas");
-        noteCanvas.id = "playhead"
-        noteCanvas.style.position = "absolute";
-        this.noteCtx = noteCanvas.getContext("2d")!;
-        noteCanvas.width = this.pianoRoll.canvasWidth;
-        noteCanvas.height = this.pianoRoll.canvasHeight;
-        this.update = this.update.bind(this);
-
-        this.pianoRoll.noteGrid.frame.append(noteCanvas);
-
-        this.drawHead();
-    }
-
-    drawHead() {
-        // Draw on note grid
-        this.noteCtx.clearRect(0,0,this.pianoRoll.canvasWidth, this.pianoRoll.canvasHeight);
-        this.noteCtx.beginPath();
-        this.noteCtx.moveTo(this.headPos, 0);
-        this.noteCtx.lineTo(this.headPos, this.pianoRoll.canvasHeight);
-        this.noteCtx.strokeStyle = "white";
-        this.noteCtx.lineWidth = 1;
-        this.noteCtx.stroke();
-
-        // Draw on time bar
-    }
-
-    play() {
-        requestAnimationFrame(this.update);
-    }
-
-    stop() {
-        this.headPos = this.startTime;
-        this.playTime = 0;
-        this.drawHead();
-    }
-
-    update(now: any) {
-        if (!this.pianoRoll.playing) return;
-
-        if (!this.playTime) { this.playTime = now }
-        let elapsed = now - this.playTime;
-        this.headPos = (elapsed/200) * this.pianoRoll.config.beatWidth;
-
-        if (this.headPos >= this.pianoRoll.canvasWidth) {
-            this.stop();
-        }
-        
-        if (this.pianoRoll.playing) {
-            this.drawHead();
-            requestAnimationFrame(this.update);
-        }
-    }
-}
-
 // Some utility functions
 function clamp(number: number, min: number, max: number) : number {
     return Math.max(min, Math.min(number, max));
@@ -657,6 +685,12 @@ function numToPitchName(pitchNum: number) : string {
     return pc + octave
 }
 
+function beatsToTransTime(beatsIn: number) : string {
+    let bars = Math.floor(beatsIn/4).toString();
+    let beats = (beatsIn % 4).toString();
+    return bars+":"+beats+":0";
+}
+
 // Test function that creates the notes we use in the PianoRoll
 function makeNotes() : Note[] {
     let pitches = [41];
@@ -676,6 +710,8 @@ function makeNotes() : Note[] {
 // Main program
 var pianoRoll: PianoRoll;
 $(function() {    
+    document.body.addEventListener("click", Tone.start);
+    document.body.addEventListener("keydown", Tone.start);
     let notes = makeNotes();
     pianoRoll = new PianoRoll(notes);
 });

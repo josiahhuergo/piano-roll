@@ -1,5 +1,6 @@
 {
   "name": "piano-roll",
+  "type": "module",
   "scripts": {
     "build": "node ./build/build.js",
     "start": "node ./build/serve.js"
@@ -11,5 +12,7 @@
     "esbuild-plugin-tsc": "^0.4.0",
     "typescript": "^5.4.5"
   },
-  "type": "module"
+  "dependencies": {
+    "tone": "^15.0.4"
+  }
 }
