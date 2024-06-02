@@ -1,3 +1,4 @@
+import { start } from "repl";
 import * as Tone from "tone";
 
 /*
@@ -44,6 +45,8 @@ class Note {
 class NoteGrid {
     pianoRoll: PianoRoll;
     frame: HTMLDivElement;
+    width: number = 0;
+    height: number = 0;
     noteGrid: HTMLDivElement;
     
     constructor(pianoRoll: PianoRoll) {
@@ -52,6 +55,7 @@ class NoteGrid {
         this.noteGrid = document.createElement("div");
 
         this.#createFrame();
+        this.scrollToFirstNote();
         this.#drawBackdrop();
         this.#drawNotes();
     }
@@ -61,11 +65,20 @@ class NoteGrid {
         this.frame.style.position = "absolute";
         this.frame.style.top = this.pianoRoll.config.timeBarHeight + "px";
         this.frame.style.left = this.pianoRoll.config.pianoBarWidth + "px";
-        this.frame.style.width = this.pianoRoll.config.frameWidth + "px";
-        this.frame.style.height = this.pianoRoll.config.frameHeight + "px";
+        this.width = this.pianoRoll.config.frameWidth;
+        this.frame.style.width = this.width + "px";
+        this.height = this.pianoRoll.config.frameHeight;
+        this.frame.style.height = this.height + "px";
         this.frame.style.overflow = "scroll"; 
         this.frame.style.scrollbarWidth = "none";
         this.pianoRoll.frame.append(this.frame);
+    }
+
+    scrollToFirstNote() {
+        let noteYPos = (this.pianoRoll.maxDrawPitch - this.pianoRoll.noteSet[0].pitch) * this.pianoRoll.config.noteHeight;
+        let halfPageY = parseInt(this.frame.style.height) / 2;
+        noteYPos = noteYPos - halfPageY;
+        this.frame.scrollTop = noteYPos;
     }
 
     #drawBackdrop() {
@@ -144,6 +157,16 @@ class NoteGrid {
             note.style.fontSize = clamp(this.pianoRoll.config.noteHeight/1.5, 0, 10) + "px";
             this.noteGrid.append(note);
         }
+    }
+
+    get leftBound(): number {
+        // returns x position of canvas on leftmost extreme of frame
+        return this.frame.scrollLeft;
+    }
+
+    get rightBound(): number {
+        // returns x position of canvas on rightmost extreme of frame
+        return this.leftBound + this.width;
     }
 }
 
@@ -318,6 +341,8 @@ class PlayHead {
     }
 
     play() {
+        // Scrolls the note frame to the bar that startTime is located at.
+        this.pianoRoll.noteGrid.frame.scrollLeft = Math.floor(this.startTime/this.pianoRoll.config.beatWidth/4)*4*this.pianoRoll.config.beatWidth;
         requestAnimationFrame(this.update);
     }
 
@@ -331,8 +356,11 @@ class PlayHead {
         if (Tone.getTransport().state === "stopped") return;
         if (this.playTime === 0) { this.playTime = now; }
         let factor = (1000 / this.pianoRoll.config.beatWidth * 60) / Tone.getTransport().bpm.value;
-        this.headPos = (now - this.playTime) / factor;
+        this.headPos = (now - this.playTime) / factor + this.startTime;
 
+        if (this.headPos >= this.pianoRoll.noteGrid.rightBound) {
+            this.pianoRoll.noteGrid.frame.scrollLeft += this.pianoRoll.noteGrid.width;
+        }
         if (this.headPos >= this.pianoRoll.canvasWidth) {
             this.pianoRoll.transport.stop();
         }
@@ -441,6 +469,7 @@ class Transport {
     }
 
     play() {
+        this.pianoRoll.noteGrid.scrollToFirstNote();
         this.playHead.play();
         this.#drawStop();
         Tone.getTransport().start();
@@ -467,7 +496,7 @@ class Config {
     frameWidth: number = 800;
     frameHeight: number = 600;
     beatWidth: number = 20;
-    noteHeight: number = 10;
+    noteHeight: number = 15;
     pianoBarWidth: number = 30;
     timeBarHeight: number = 30;
 }
@@ -529,7 +558,6 @@ class PianoRoll {
 
         // Scroll sync
         this.#syncScrolling();
-        this.#scrollToFirstNote();
     }
 
     #createFrame() {
@@ -572,13 +600,6 @@ class PianoRoll {
             this.scrollSync = true;
             this.noteGrid.frame.scrollLeft = this.timeBar.frame.scrollLeft;
         });
-    }
-
-    #scrollToFirstNote() {
-        let noteYPos = (this.maxDrawPitch - this.noteSet[0].pitch) * this.config.noteHeight;
-        let halfPageY = parseInt(this.noteGrid.frame.style.height) / 2;
-        noteYPos = noteYPos - halfPageY;
-        this.noteGrid.frame.scrollTop = noteYPos;
     }
 
     play() {
@@ -694,7 +715,12 @@ function beatsToTransTime(beatsIn: number) : string {
 // Test function that creates the notes we use in the PianoRoll
 function makeNotes() : Note[] {
     let pitches = [90];
-    let scale = [-2,-2,-3,2,-2,-2,-3,9];
+    let scale = [
+        -2,-2,-3,2,-2,-2,-3,9,
+        -2,-2,-3,2,-2,-2,-3,9,
+        -2,-2,-3,2,-2,-2,-3,-1,
+        2,1,2,1,2,1,2,1
+    ];
     let scaleIdx = 0;
     for (let i=0; i<scale.length*16; i++) {
         pitches.push(pitches.slice(-1)[0] + scale[scaleIdx]);
@@ -714,6 +740,5 @@ $(function() {
     document.body.addEventListener("keydown", Tone.start);
     let notes = makeNotes();
     pianoRoll = new PianoRoll(notes);
-    Tone.getTransport().bpm.value = 820;
-    console.log(Tone.getTransport().bpm.value)
+    Tone.getTransport().bpm.value = 800;
 });
