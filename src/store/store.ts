@@ -23,7 +23,6 @@ interface AppState {
     beatCount: number;
     pianoBarWidth: number;
     meterBarHeight: number;
-    dragging: boolean;
     vertScrollAmount: number;
     horiScrollAmount: number;
 }
@@ -46,7 +45,6 @@ const initialState: AppState = {
     beatCount: 100,
     pianoBarWidth: 80,
     meterBarHeight: 20,
-    dragging: false,
     vertScrollAmount: 0,
     horiScrollAmount: 0,
 };
@@ -57,9 +55,6 @@ const appSlice = createSlice({
     reducers: {
         updateCanvasSize: (state) => {
             state.canvasSize = calculateCanvasSize();
-        },
-        setDragging: (state, action) => {
-            state.dragging = action.payload;
         },
         setVertScroll: (state, action) => {
             const totalHeight = selectTotalHeight({ app: state });
@@ -123,7 +118,6 @@ export const selectPianoBarWidth = (state: { app: AppState }) =>
     state.app.pianoBarWidth;
 export const selectMeterBarHeight = (state: { app: AppState }) =>
     state.app.meterBarHeight;
-export const selectDragging = (state: { app: AppState }) => state.app.dragging;
 export const selectVertScrollAmount = (state: { app: AppState }) =>
     state.app.vertScrollAmount;
 export const selectHoriScrollAmount = (state: { app: AppState }) =>
@@ -238,7 +232,6 @@ export const selectMeterBarWidth = createSelector(
 
 export const {
     updateCanvasSize,
-    setDragging,
     setVertScroll,
     verticalScroll,
     setHoriScroll,

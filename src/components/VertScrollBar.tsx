@@ -1,18 +1,16 @@
 import type { FederatedPointerEvent, Graphics } from "pixi.js";
 import { remap } from "../helpers/util";
 import { useApplication } from "@pixi/react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import {
     selectCanvasSize,
-    selectDragging,
     selectMeterBarHeight,
     selectNoteGridHeight,
     selectScrollBarThickness,
     selectTotalHeight,
     selectVertScrollAmount,
-    setDragging,
+    setVertScroll,
     store,
-    verticalScroll,
 } from "../store/store";
 import { useSelector } from "react-redux";
 
@@ -62,17 +60,26 @@ function Bar() {
         [scrollBarThickness, noteGridHeight, totalHeight]
     );
 
-    const dragging = useSelector(selectDragging);
+    const [dragging, setDragging] = useState(false);
+    const [clickVertScrollAmt, setClickVertScrollAmt] = useState(0);
+    const [clickMouseY, setClickMouseY] = useState(0);
 
     const onPointerMove = (event: FederatedPointerEvent) => {
         if (dragging) {
-            store.dispatch(verticalScroll(event.movementY));
+            const scrollAmount = remap(
+                clickVertScrollAmt + (event.screenY - clickMouseY),
+                0,
+                noteGridHeight - barHeight,
+                0,
+                totalHeight - noteGridHeight
+            );
+            store.dispatch(setVertScroll(scrollAmount));
         }
     };
 
     const onPointerUp = () => {
         if (dragging) {
-            store.dispatch(setDragging(false));
+            setDragging(false);
 
             stage.off("pointermove", onPointerMove);
             stage.off("pointerup", onPointerUp);
@@ -80,8 +87,10 @@ function Bar() {
         }
     };
 
-    const onPointerDown = () => {
-        store.dispatch(setDragging(true));
+    const onPointerDown = (event: FederatedPointerEvent) => {
+        setDragging(true);
+        setClickVertScrollAmt(vertScrollAmount);
+        setClickMouseY(event.screenY);
 
         stage.on("pointermove", onPointerMove);
         stage.on("pointerup", onPointerUp);
