@@ -1,13 +1,24 @@
 import type { FederatedPointerEvent, Graphics } from "pixi.js";
-import { useAppStore, useNoteGridHeight, useTotalHeight } from "../store/store";
 import { remap } from "../helpers/util";
 import { useApplication } from "@pixi/react";
 import { useCallback } from "react";
+import {
+    selectCanvasSize,
+    selectDragging,
+    selectMeterBarHeight,
+    selectNoteGridHeight,
+    selectScrollBarThickness,
+    selectTotalHeight,
+    selectVertScrollAmount,
+    setDragging,
+    store,
+    verticalScroll,
+} from "../store/store";
+import { useSelector } from "react-redux";
 
 function Background() {
-    const scrollBarThickness = useAppStore((state) => state.scrollBarThickness);
-    const noteGridHeight = useNoteGridHeight();
-    const canvasHeight = useAppStore((state) => state.canvasSize.height);
+    const scrollBarThickness = useSelector(selectScrollBarThickness);
+    const noteGridHeight = useSelector(selectNoteGridHeight);
 
     const draw = useCallback(
         (graphics: Graphics) => {
@@ -17,18 +28,17 @@ function Background() {
                 .rect(0, 0, scrollBarThickness, noteGridHeight)
                 .fill(0x151515);
         },
-        [canvasHeight]
+        [scrollBarThickness, noteGridHeight]
     );
 
     return <pixiGraphics draw={draw} />;
 }
 
 function Bar() {
-    const scrollBarThickness = useAppStore((state) => state.scrollBarThickness);
-    const vertScrollAmount = useAppStore((state) => state.vertScrollAmount);
-    const totalHeight = useTotalHeight();
-    const noteGridHeight = useNoteGridHeight();
-    const verticalScroll = useAppStore((state) => state.verticalScroll);
+    const scrollBarThickness = useSelector(selectScrollBarThickness);
+    const vertScrollAmount = useSelector(selectVertScrollAmount);
+    const totalHeight = useSelector(selectTotalHeight);
+    const noteGridHeight = useSelector(selectNoteGridHeight);
 
     const app = useApplication();
     const stage = app.app.stage;
@@ -52,18 +62,17 @@ function Bar() {
         [scrollBarThickness, noteGridHeight, totalHeight]
     );
 
-    const dragging = useAppStore((state) => state.dragging);
-    const setDragging = useAppStore((state) => state.setDragging);
+    const dragging = useSelector(selectDragging);
 
     const onPointerMove = (event: FederatedPointerEvent) => {
         if (dragging) {
-            verticalScroll(event.movementY);
+            store.dispatch(verticalScroll(event.movementY));
         }
     };
 
     const onPointerUp = () => {
         if (dragging) {
-            setDragging(false);
+            store.dispatch(setDragging(false));
 
             stage.off("pointermove", onPointerMove);
             stage.off("pointerup", onPointerUp);
@@ -72,7 +81,7 @@ function Bar() {
     };
 
     const onPointerDown = () => {
-        setDragging(true);
+        store.dispatch(setDragging(true));
 
         stage.on("pointermove", onPointerMove);
         stage.on("pointerup", onPointerUp);
@@ -91,12 +100,15 @@ function Bar() {
 }
 
 export default function VertScrollBar() {
-    const scrollBarThickness = useAppStore((state) => state.scrollBarThickness);
-    const meterBarHeight = useAppStore((state) => state.meterBarHeight);
-    const canvasWidth = useAppStore((state) => state.canvasSize.width);
+    const scrollBarThickness = useSelector(selectScrollBarThickness);
+    const meterBarHeight = useSelector(selectMeterBarHeight);
+    const canvasSize = useSelector(selectCanvasSize);
 
     return (
-        <pixiContainer x={canvasWidth - scrollBarThickness} y={meterBarHeight}>
+        <pixiContainer
+            x={canvasSize.width - scrollBarThickness}
+            y={meterBarHeight}
+        >
             <Background />
             <Bar />
         </pixiContainer>

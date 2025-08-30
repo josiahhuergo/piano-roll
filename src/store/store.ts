@@ -1,6 +1,9 @@
-import { create } from "zustand";
+import {
+    configureStore,
+    createSelector,
+    createSlice,
+} from "@reduxjs/toolkit/react";
 import { calculateCanvasSize, clamp } from "../helpers/util";
-import { createComputed } from "zustand-computed";
 
 interface Note {
     id: number;
@@ -11,35 +14,21 @@ interface Note {
 
 interface AppState {
     notes: Note[];
-
     canvasSize: { width: number; height: number };
-    updateCanvasSize: () => void;
-
     scrollBarThickness: number;
     laneHeight: number;
     beatWidth: number;
     maxPitch: number;
     minPitch: number;
     beatCount: number;
-
     pianoBarWidth: number;
     meterBarHeight: number;
-
     dragging: boolean;
-    setDragging: (val: boolean) => void;
-
     vertScrollAmount: number;
-    setVertScroll: (amount: number) => void;
-    verticalScroll: (delta: number) => void;
-    isVertOverflow: () => boolean;
-
     horiScrollAmount: number;
-    setHoriScroll: (amount: number) => void;
-    horizontalScroll: (delta: number) => void;
-    isHoriOverflow: () => boolean;
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
+const initialState: AppState = {
     notes: [
         { id: 0, pitch: 60, onset: 0, duration: 4 },
         { id: 1, pitch: 64, onset: 0, duration: 4 },
@@ -48,176 +37,220 @@ export const useAppStore = create<AppState>((set, get) => ({
         { id: 4, pitch: 83, onset: 6, duration: 1 },
         { id: 5, pitch: 79, onset: 7, duration: 2 },
     ],
-
     canvasSize: calculateCanvasSize(),
-
-    updateCanvasSize: () => {
-        set({ canvasSize: calculateCanvasSize() });
-    },
-
     scrollBarThickness: 12,
     laneHeight: 19,
     beatWidth: 80,
     maxPitch: 108,
     minPitch: 21,
     beatCount: 100,
-
     pianoBarWidth: 80,
     meterBarHeight: 20,
-
     dragging: false,
-    setDragging: (val) => {
-        set({ dragging: val });
-    },
-
-    // VertScrollBar
     vertScrollAmount: 0,
-    setVertScroll: (amount) => {
-        const totalHeight = useTotalHeight();
-        const noteGridHeight = useNoteGridHeight();
-
-        set(() => {
-            return {
-                vertScrollAmount: clamp(
-                    amount,
-                    0,
-                    totalHeight - noteGridHeight
-                ),
-            };
-        });
-    },
-    verticalScroll: (delta) => {
-        const totalHeight = useTotalHeight();
-        const noteGridHeight = useNoteGridHeight();
-
-        set((state) => {
-            return {
-                vertScrollAmount: clamp(
-                    state.vertScrollAmount + delta,
-                    0,
-                    totalHeight - noteGridHeight
-                ),
-            };
-        });
-    },
-    isVertOverflow: () => {
-        const totalHeight = useTotalHeight();
-
-        if (totalHeight > get().canvasSize.height) {
-            return true;
-        } else {
-            return false;
-        }
-    },
-
-    // HoriScrollBar
     horiScrollAmount: 0,
-    setHoriScroll: (amount) => {
-        const totalWidth = useTotalWidth();
-        const noteGridWidth = useNoteGridWidth();
+};
 
-        set(() => {
-            return {
-                horiScrollAmount: clamp(amount, 0, totalWidth - noteGridWidth),
-            };
-        });
+const appSlice = createSlice({
+    name: "app",
+    initialState,
+    reducers: {
+        updateCanvasSize: (state) => {
+            state.canvasSize = calculateCanvasSize();
+        },
+        setDragging: (state, action) => {
+            state.dragging = action.payload;
+        },
+        setVertScroll: (state, action) => {
+            const totalHeight = selectTotalHeight({ app: state });
+            const noteGridHeight = selectNoteGridHeight({ app: state });
+
+            state.vertScrollAmount = clamp(
+                action.payload,
+                0,
+                totalHeight - noteGridHeight
+            );
+        },
+        verticalScroll: (state, action) => {
+            const totalHeight = selectTotalHeight({ app: state });
+            const noteGridHeight = selectNoteGridHeight({ app: state });
+
+            state.vertScrollAmount = clamp(
+                state.vertScrollAmount + action.payload,
+                0,
+                totalHeight - noteGridHeight
+            );
+        },
+        setHoriScroll: (state, action) => {
+            const totalWidth = selectTotalWidth({ app: state });
+            const noteGridWidth = selectNoteGridWidth({ app: state });
+
+            state.horiScrollAmount = clamp(
+                action.payload,
+                0,
+                totalWidth - noteGridWidth
+            );
+        },
+        horizontalScroll: (state, action) => {
+            const totalWidth = selectTotalWidth({ app: state });
+            const noteGridWidth = selectNoteGridWidth({ app: state });
+
+            state.horiScrollAmount = clamp(
+                state.horiScrollAmount + action.payload,
+                0,
+                totalWidth - noteGridWidth
+            );
+        },
     },
-    horizontalScroll: (delta) => {
-        const totalWidth = useTotalWidth();
-        const noteGridWidth = useNoteGridWidth();
+});
 
-        set((state) => {
-            return {
-                horiScrollAmount: clamp(
-                    state.horiScrollAmount + delta,
-                    0,
-                    totalWidth - noteGridWidth
-                ),
-            };
-        });
-    },
-    isHoriOverflow: () => {
-        const totalWidth = useTotalWidth();
+// Basic selectors
+export const selectApp = (state: { app: AppState }) => state.app;
+export const selectNotes = (state: { app: AppState }) => state.app.notes;
+export const selectCanvasSize = (state: { app: AppState }) =>
+    state.app.canvasSize;
+export const selectScrollBarThickness = (state: { app: AppState }) =>
+    state.app.scrollBarThickness;
+export const selectLaneHeight = (state: { app: AppState }) =>
+    state.app.laneHeight;
+export const selectMaxPitch = (state: { app: AppState }) => state.app.maxPitch;
+export const selectMinPitch = (state: { app: AppState }) => state.app.minPitch;
+export const selectBeatWidth = (state: { app: AppState }) =>
+    state.app.beatWidth;
+export const selectBeatCount = (state: { app: AppState }) =>
+    state.app.beatCount;
+export const selectPianoBarWidth = (state: { app: AppState }) =>
+    state.app.pianoBarWidth;
+export const selectMeterBarHeight = (state: { app: AppState }) =>
+    state.app.meterBarHeight;
+export const selectDragging = (state: { app: AppState }) => state.app.dragging;
+export const selectVertScrollAmount = (state: { app: AppState }) =>
+    state.app.vertScrollAmount;
+export const selectHoriScrollAmount = (state: { app: AppState }) =>
+    state.app.horiScrollAmount;
 
-        if (totalWidth > get().canvasSize.width) {
-            return true;
+// Computed selectors
+export const selectLaneCount = createSelector(
+    [selectMaxPitch, selectMinPitch],
+    (maxPitch, minPitch) => maxPitch - minPitch + 1
+);
+
+export const selectTotalWidth = createSelector(
+    [selectBeatCount, selectBeatWidth],
+    (beatCount, beatWidth) => beatCount * beatWidth
+);
+
+export const selectTotalHeight = createSelector(
+    [selectLaneCount, selectLaneHeight],
+    (laneCount, laneHeight) => laneCount * laneHeight
+);
+
+export const selectIsVertOverflow = createSelector(
+    [selectTotalHeight, selectCanvasSize],
+    (totalHeight, canvasSize) => totalHeight > canvasSize.height
+);
+
+export const selectIsHoriOverflow = createSelector(
+    [selectTotalWidth, selectCanvasSize],
+    (totalWidth, canvasSize) => totalWidth > canvasSize.width
+);
+
+// NoteGrid selectors
+export const selectNoteGridX = selectPianoBarWidth;
+
+export const selectNoteGridY = selectMeterBarHeight;
+
+export const selectNoteGridWidth = createSelector(
+    [
+        selectIsVertOverflow,
+        selectCanvasSize,
+        selectPianoBarWidth,
+        selectScrollBarThickness,
+    ],
+    (isVertOverflow, canvasSize, pianoBarWidth, scrollBarThickness) => {
+        if (isVertOverflow) {
+            return canvasSize.width - pianoBarWidth - scrollBarThickness;
         } else {
-            return false;
+            return canvasSize.width - pianoBarWidth;
         }
+    }
+);
+
+export const selectNoteGridHeight = createSelector(
+    [
+        selectIsHoriOverflow,
+        selectCanvasSize,
+        selectMeterBarHeight,
+        selectScrollBarThickness,
+    ],
+    (isHoriOverflow, canvasSize, meterBarHeight, scrollBarThickness) => {
+        if (isHoriOverflow) {
+            return canvasSize.height - meterBarHeight - scrollBarThickness;
+        } else {
+            return canvasSize.height - meterBarHeight;
+        }
+    }
+);
+
+// Piano Bar selectors
+export const selectPianoBarX = () => 0;
+
+export const selectPianoBarY = selectMeterBarHeight;
+
+export const selectPianoBarHeight = createSelector(
+    [
+        selectIsHoriOverflow,
+        selectCanvasSize,
+        selectMeterBarHeight,
+        selectScrollBarThickness,
+    ],
+    (isHoriOverflow, canvasSize, meterBarHeight, scrollBarThickness) => {
+        if (isHoriOverflow) {
+            return canvasSize.height - meterBarHeight - scrollBarThickness;
+        } else {
+            return canvasSize.height - meterBarHeight;
+        }
+    }
+);
+
+// Meter Bar selectors
+export const selectMeterBarX = selectPianoBarWidth;
+
+export const selectMeterBarY = () => 0;
+
+export const selectMeterBarWidth = createSelector(
+    [
+        selectIsVertOverflow,
+        selectCanvasSize,
+        selectPianoBarWidth,
+        selectScrollBarThickness,
+    ],
+    (isVertOverflow, canvasSize, pianoBarWidth, scrollBarThickness) => {
+        if (isVertOverflow) {
+            return canvasSize.width - pianoBarWidth - scrollBarThickness;
+        } else {
+            return canvasSize.width - pianoBarWidth;
+        }
+    }
+);
+
+// ========== THUNKS (Actions that can use selectors) ==========
+
+export const {
+    updateCanvasSize,
+    setDragging,
+    setVertScroll,
+    verticalScroll,
+    setHoriScroll,
+    horizontalScroll,
+} = appSlice.actions;
+
+// Store configuration
+export const store = configureStore({
+    reducer: {
+        app: appSlice.reducer,
     },
-}));
+});
 
-export const useLaneCount = () =>
-    useAppStore((state) => state.maxPitch - state.minPitch + 1);
-
-export const useTotalWidth = () =>
-    useAppStore((state) => state.beatCount * state.beatWidth);
-
-export const useTotalHeight = () => {
-    const laneCount = useLaneCount();
-    const laneHeight = useAppStore((state) => state.laneHeight);
-    return laneCount * laneHeight;
-};
-
-//------ NOTEGRID ---------
-
-export const useNoteGridX = () => useAppStore((state) => state.pianoBarWidth);
-export const useNoteGridY = () => useAppStore((state) => state.meterBarHeight);
-export const useNoteGridWidth = () => {
-    const isVertOverflow = useAppStore((state) => state.isVertOverflow);
-    const canvasWidth = useAppStore((state) => state.canvasSize.width);
-    const pianoBarWidth = useAppStore((state) => state.pianoBarWidth);
-    const scrollBarThickness = useAppStore((state) => state.scrollBarThickness);
-
-    if (isVertOverflow()) {
-        return canvasWidth - pianoBarWidth - scrollBarThickness;
-    } else {
-        return canvasWidth - pianoBarWidth;
-    }
-};
-export const useNoteGridHeight = () => {
-    const isHoriOverflow = useAppStore((state) => state.isHoriOverflow);
-    const canvasHeight = useAppStore((state) => state.canvasSize.height);
-    const meterBarHeight = useAppStore((state) => state.meterBarHeight);
-    const scrollBarThickness = useAppStore((state) => state.scrollBarThickness);
-
-    if (isHoriOverflow()) {
-        return canvasHeight - meterBarHeight - scrollBarThickness;
-    } else {
-        return canvasHeight - meterBarHeight;
-    }
-};
-
-//-------- PIANO BAR ----------
-
-export const usePianoBarX = () => 0;
-export const usePianoBarY = () => useAppStore((state) => state.meterBarHeight);
-export const usePianoBarHeight = () => {
-    const isHoriOverflow = useAppStore((state) => state.isHoriOverflow);
-    const canvasHeight = useAppStore((state) => state.canvasSize.height);
-    const meterBarHeight = useAppStore((state) => state.meterBarHeight);
-    const scrollBarThickness = useAppStore((state) => state.scrollBarThickness);
-
-    if (isHoriOverflow()) {
-        return canvasHeight - meterBarHeight - scrollBarThickness;
-    } else {
-        return canvasHeight - meterBarHeight;
-    }
-};
-
-//--------- METER BAR ---------
-
-export const useMeterBarX = () => useAppStore((state) => state.pianoBarWidth);
-export const useMeterBarY = () => 0;
-export const useMeterBarWidth = () => {
-    const isVertOverflow = useAppStore((state) => state.isVertOverflow);
-    const canvasWidth = useAppStore((state) => state.canvasSize.width);
-    const pianoBarWidth = useAppStore((state) => state.pianoBarWidth);
-    const scrollBarThickness = useAppStore((state) => state.scrollBarThickness);
-
-    if (isVertOverflow()) {
-        return canvasWidth - pianoBarWidth - scrollBarThickness;
-    } else {
-        return canvasWidth - pianoBarWidth;
-    }
-};
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;

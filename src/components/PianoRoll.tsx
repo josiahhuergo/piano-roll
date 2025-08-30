@@ -3,15 +3,21 @@ import PianoBar from "./PianoBar";
 import NoteGrid from "./NoteGrid";
 import { extend } from "@pixi/react";
 import { Container, FederatedWheelEvent, Graphics, Text } from "pixi.js";
-import { useAppStore } from "../store/store";
 import VertScrollBar from "./VertScrollBar";
 import HoriScrollBar from "./HoriScrollBar";
 import { useRef } from "react";
+import { useSelector } from "react-redux";
+import {
+    horizontalScroll,
+    selectCanvasSize,
+    store,
+    verticalScroll,
+} from "../store/store";
 
 extend({ Container, Graphics, Text });
 
 function Background() {
-    const canvasSize = useAppStore((state) => state.canvasSize);
+    const canvasSize = useSelector(selectCanvasSize);
     let i = useRef(0);
 
     return (
@@ -32,17 +38,14 @@ function Background() {
 }
 
 export default function PianoRoll() {
-    const verticalScroll = useAppStore((state) => state.verticalScroll);
-    const horizontalScroll = useAppStore((state) => state.horizontalScroll);
-
     return (
         <pixiContainer
             eventMode="static"
             onWheel={(event: FederatedWheelEvent) => {
                 if (event.shiftKey) {
-                    horizontalScroll(event.deltaY);
+                    store.dispatch(horizontalScroll(event.deltaY));
                 } else {
-                    verticalScroll(event.deltaY);
+                    store.dispatch(verticalScroll(event.deltaY));
                 }
                 event.stopPropagation();
                 event.preventDefault();

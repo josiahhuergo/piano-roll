@@ -1,11 +1,19 @@
 import type { Graphics } from "pixi.js";
-import { useAppStore, useNoteGridWidth, useTotalWidth } from "../store/store";
 import { remap } from "../helpers/util";
 import { useCallback } from "react";
+import { useSelector } from "react-redux";
+import {
+    selectCanvasSize,
+    selectHoriScrollAmount,
+    selectNoteGridWidth,
+    selectPianoBarWidth,
+    selectScrollBarThickness,
+    selectTotalWidth,
+} from "../store/store";
 
 function Background() {
-    const scrollBarThickness = useAppStore((state) => state.scrollBarThickness);
-    const noteGridWidth = useNoteGridWidth();
+    const scrollBarThickness = useSelector(selectScrollBarThickness);
+    const noteGridWidth = useSelector(selectNoteGridWidth);
 
     const draw = useCallback(
         (graphics: Graphics) => {
@@ -23,10 +31,10 @@ function Background() {
 }
 
 function Bar() {
-    const scrollBarThickness = useAppStore((state) => state.scrollBarThickness);
-    const horiScrollAmount = useAppStore((state) => state.horiScrollAmount);
-    const totalWidth = useTotalWidth();
-    const noteGridWidth = useNoteGridWidth();
+    const scrollBarThickness = useSelector(selectScrollBarThickness);
+    const horiScrollAmount = useSelector(selectHoriScrollAmount);
+    const totalWidth = useSelector(selectTotalWidth);
+    const noteGridWidth = useSelector(selectNoteGridWidth);
 
     const barWidth = remap(noteGridWidth, 0, totalWidth, 0, noteGridWidth);
 
@@ -55,12 +63,15 @@ function Bar() {
 }
 
 export default function VertScrollBar() {
-    const scrollBarThickness = useAppStore((state) => state.scrollBarThickness);
-    const canvasHeight = useAppStore((state) => state.canvasSize.height);
-    const pianoBarWidth = useAppStore((state) => state.pianoBarWidth);
+    const scrollBarThickness = useSelector(selectScrollBarThickness);
+    const canvasSize = useSelector(selectCanvasSize);
+    const pianoBarWidth = useSelector(selectPianoBarWidth);
 
     return (
-        <pixiContainer x={pianoBarWidth} y={canvasHeight - scrollBarThickness}>
+        <pixiContainer
+            x={pianoBarWidth}
+            y={canvasSize.height - scrollBarThickness}
+        >
             <Background />
             <Bar />
         </pixiContainer>

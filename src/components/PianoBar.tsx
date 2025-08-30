@@ -1,25 +1,30 @@
 import type { Graphics } from "pixi.js";
-import {
-    useAppStore,
-    useLaneCount,
-    usePianoBarHeight,
-    usePianoBarX,
-    usePianoBarY,
-} from "../store/store";
 import { pitchIsBlackKey } from "../helpers/util";
 import { useCallback, useRef } from "react";
+import { useSelector } from "react-redux";
+import {
+    selectLaneCount,
+    selectLaneHeight,
+    selectMaxPitch,
+    selectMeterBarHeight,
+    selectPianoBarHeight,
+    selectPianoBarWidth,
+    selectPianoBarX,
+    selectPianoBarY,
+    selectVertScrollAmount,
+} from "../store/store";
 
 export default function PianoBar() {
-    const maxPitch = useAppStore((state) => state.maxPitch);
-    const laneHeight = useAppStore((state) => state.laneHeight);
-    const laneCount = useLaneCount();
-    const timeBarHeight = useAppStore((state) => state.meterBarHeight);
-    const verticalScrollAmount = useAppStore((state) => state.vertScrollAmount);
+    const maxPitch = useSelector(selectMaxPitch);
+    const laneHeight = useSelector(selectLaneHeight);
+    const laneCount = useSelector(selectLaneCount);
+    const meterBarHeight = useSelector(selectMeterBarHeight);
+    const vertScrollAmount = useSelector(selectVertScrollAmount);
 
-    const pianoBarX = usePianoBarX();
-    const pianoBarY = usePianoBarY();
-    const pianoBarWidth = useAppStore((state) => state.pianoBarWidth);
-    const pianoBarHeight = usePianoBarHeight();
+    const pianoBarX = useSelector(selectPianoBarX);
+    const pianoBarY = useSelector(selectPianoBarY);
+    const pianoBarWidth = useSelector(selectPianoBarWidth);
+    const pianoBarHeight = useSelector(selectPianoBarHeight);
 
     const drawPianoBar = useCallback(
         (graphics: Graphics) => {
@@ -63,7 +68,7 @@ export default function PianoBar() {
         <>
             <pixiGraphics ref={maskRef} draw={drawMask} />
             <pixiContainer
-                y={timeBarHeight - verticalScrollAmount}
+                y={meterBarHeight - vertScrollAmount}
                 mask={maskRef?.current}
             >
                 <pixiGraphics draw={drawPianoBar} />

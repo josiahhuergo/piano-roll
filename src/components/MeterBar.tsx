@@ -1,16 +1,21 @@
 import type { Graphics } from "pixi.js";
-import {
-    useAppStore,
-    useMeterBarWidth,
-    useMeterBarX,
-    useMeterBarY,
-    useTotalWidth,
-} from "../store/store";
 import { useCallback, useRef } from "react";
+import {
+    selectBeatCount,
+    selectBeatWidth,
+    selectHoriScrollAmount,
+    selectMeterBarHeight,
+    selectMeterBarWidth,
+    selectMeterBarX,
+    selectMeterBarY,
+    selectPianoBarWidth,
+    selectTotalWidth,
+} from "../store/store";
+import { useSelector } from "react-redux";
 
 function Background() {
-    const totalWidth = useTotalWidth();
-    const meterBarHeight = useAppStore((state) => state.meterBarHeight);
+    const totalWidth = useSelector(selectTotalWidth);
+    const meterBarHeight = useSelector(selectMeterBarHeight);
 
     const draw = useCallback(
         (graphics: Graphics) => {
@@ -25,9 +30,9 @@ function Background() {
 }
 
 function MeasureLines() {
-    const beatCount = useAppStore((state) => state.beatCount);
-    const beatWidth = useAppStore((state) => state.beatWidth);
-    const meterBarHeight = useAppStore((state) => state.meterBarHeight);
+    const beatCount = useSelector(selectBeatCount);
+    const beatWidth = useSelector(selectBeatWidth);
+    const meterBarHeight = useSelector(selectMeterBarHeight);
 
     const draw = useCallback(
         (graphics: Graphics) => {
@@ -50,8 +55,8 @@ function MeasureLines() {
 }
 
 function BeatNumbers() {
-    const beatCount = useAppStore((state) => state.beatCount);
-    const beatWidth = useAppStore((state) => state.beatWidth);
+    const beatCount = useSelector(selectBeatCount);
+    const beatWidth = useSelector(selectBeatWidth);
 
     const labels = Array.from({ length: beatCount }, (_, i) => i).filter(
         (i) => i % 4 == 0
@@ -77,13 +82,13 @@ function BeatNumbers() {
 }
 
 function MeterBarArea() {
-    const pianoBarWidth = useAppStore((state) => state.pianoBarWidth);
-    const horiScrollAmount = useAppStore((state) => state.horiScrollAmount);
+    const pianoBarWidth = useSelector(selectPianoBarWidth);
+    const horiScrollAmount = useSelector(selectHoriScrollAmount);
 
-    const meterBarX = useMeterBarX();
-    const meterBarY = useMeterBarY();
-    const meterBarWidth = useMeterBarWidth();
-    const meterBarHeight = useAppStore((state) => state.meterBarHeight);
+    const meterBarX = useSelector(selectMeterBarX);
+    const meterBarY = useSelector(selectMeterBarY);
+    const meterBarWidth = useSelector(selectMeterBarWidth);
+    const meterBarHeight = useSelector(selectMeterBarHeight);
 
     const maskRef = useRef(null);
     const drawMask = useCallback(

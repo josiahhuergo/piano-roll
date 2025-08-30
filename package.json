@@ -11,11 +11,12 @@
   },
   "dependencies": {
     "@pixi/react": "^8.0.3",
+    "@reduxjs/toolkit": "^2.8.2",
     "pixi.js": "^8.12.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "zustand": "^5.0.8",
-    "zustand-computed": "^2.1.0"
+    "react-redux": "^9.2.0",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",

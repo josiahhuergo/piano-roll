@@ -1,22 +1,31 @@
 import type { Graphics } from "pixi.js";
 import {
-    useAppStore,
-    useLaneCount,
-    useNoteGridHeight,
-    useNoteGridWidth,
-    useNoteGridX,
-    useNoteGridY,
-    useTotalHeight,
-    useTotalWidth,
+    selectBeatCount,
+    selectBeatWidth,
+    selectHoriScrollAmount,
+    selectLaneCount,
+    selectLaneHeight,
+    selectMaxPitch,
+    selectMeterBarHeight,
+    selectNoteGridHeight,
+    selectNoteGridWidth,
+    selectNoteGridX,
+    selectNoteGridY,
+    selectNotes,
+    selectPianoBarWidth,
+    selectTotalHeight,
+    selectTotalWidth,
+    selectVertScrollAmount,
 } from "../store/store";
 import { pitchIsBlackKey } from "../helpers/util";
 import { useCallback, useRef } from "react";
+import { useSelector } from "react-redux";
 
 function KeyLanes() {
-    const maxPitch = useAppStore((state) => state.maxPitch);
-    const laneHeight = useAppStore((state) => state.laneHeight);
-    const laneCount = useLaneCount();
-    const totalWidth = useTotalWidth();
+    const maxPitch = useSelector(selectMaxPitch);
+    const laneHeight = useSelector(selectLaneHeight);
+    const laneCount = useSelector(selectLaneCount);
+    const totalWidth = useSelector(selectTotalWidth);
 
     const draw = useCallback(
         (graphics: Graphics) => {
@@ -45,9 +54,9 @@ function KeyLanes() {
 }
 
 function BeatMarkers() {
-    const beatCount = useAppStore((state) => state.beatCount);
-    const beatWidth = useAppStore((state) => state.beatWidth);
-    const totalHeight = useTotalHeight();
+    const beatCount = useSelector(selectBeatCount);
+    const beatWidth = useSelector(selectBeatWidth);
+    const totalHeight = useSelector(selectTotalHeight);
 
     const draw = useCallback(
         (graphics: Graphics) => {
@@ -71,10 +80,10 @@ function BeatMarkers() {
 }
 
 function OctaveMarkers() {
-    const laneCount = useLaneCount();
-    const maxPitch = useAppStore((state) => state.maxPitch);
-    const totalWidth = useTotalWidth();
-    const laneHeight = useAppStore((state) => state.laneHeight);
+    const laneCount = useSelector(selectLaneCount);
+    const maxPitch = useSelector(selectMaxPitch);
+    const totalWidth = useSelector(selectTotalWidth);
+    const laneHeight = useSelector(selectLaneHeight);
 
     const draw = useCallback(
         (graphics: Graphics) => {
@@ -98,9 +107,9 @@ function OctaveMarkers() {
 }
 
 function MeasureMarkers() {
-    const beatCount = useAppStore((state) => state.beatCount);
-    const beatWidth = useAppStore((state) => state.beatWidth);
-    const totalHeight = useTotalHeight();
+    const beatCount = useSelector(selectBeatCount);
+    const beatWidth = useSelector(selectBeatWidth);
+    const totalHeight = useSelector(selectTotalHeight);
 
     const draw = useCallback(
         (graphics: Graphics) => {
@@ -124,10 +133,10 @@ function MeasureMarkers() {
 }
 
 function Notes() {
-    const notesData = useAppStore((state) => state.notes);
-    const beatWidth = useAppStore((state) => state.beatWidth);
-    const laneHeight = useAppStore((state) => state.laneHeight);
-    const maxPitch = useAppStore((state) => state.maxPitch);
+    const notesData = useSelector(selectNotes);
+    const beatWidth = useSelector(selectBeatWidth);
+    const laneHeight = useSelector(selectLaneHeight);
+    const maxPitch = useSelector(selectMaxPitch);
 
     const notes = notesData.map((note) => (
         <pixiGraphics
@@ -153,16 +162,15 @@ function Notes() {
 }
 
 export default function NoteGrid() {
-    const pianoBarWidth = useAppStore((state) => state.pianoBarWidth);
-    const timeBarHeight = useAppStore((state) => state.meterBarHeight);
-    const vertScrollAmount = useAppStore((state) => state.vertScrollAmount);
-    const horiScrollAmount = useAppStore((state) => state.horiScrollAmount);
+    const pianoBarWidth = useSelector(selectPianoBarWidth);
+    const meterBarHeight = useSelector(selectMeterBarHeight);
+    const vertScrollAmount = useSelector(selectVertScrollAmount);
+    const horiScrollAmount = useSelector(selectHoriScrollAmount);
 
-    const noteGridX = useNoteGridX();
-    const noteGridY = useNoteGridY();
-    const noteGridWidth = useNoteGridWidth();
-    const noteGridHeight = useNoteGridHeight();
-
+    const noteGridX = useSelector(selectNoteGridX);
+    const noteGridY = useSelector(selectNoteGridY);
+    const noteGridWidth = useSelector(selectNoteGridWidth);
+    const noteGridHeight = useSelector(selectNoteGridHeight);
     // The mask restricts the view of the component to a rectangular region
     const maskRef = useRef(null);
     const drawMask = useCallback(
@@ -181,7 +189,7 @@ export default function NoteGrid() {
             <pixiGraphics ref={maskRef} draw={drawMask} />
             <pixiContainer
                 x={pianoBarWidth - horiScrollAmount}
-                y={timeBarHeight - vertScrollAmount}
+                y={meterBarHeight - vertScrollAmount}
                 mask={maskRef?.current}
             >
                 <KeyLanes />

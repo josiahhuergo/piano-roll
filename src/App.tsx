@@ -1,20 +1,24 @@
 import { Application } from "@pixi/react";
 import { useEffect, useRef } from "react";
 import PianoRoll from "./components/PianoRoll";
-import { useAppStore } from "./store/store";
+import { useSelector } from "react-redux";
+import { selectCanvasSize, store, updateCanvasSize } from "./store/store";
 
 export default function App() {
-    const { canvasSize, updateCanvasSize } = useAppStore();
+    const canvasSize = useSelector(selectCanvasSize);
+
     const parentDiv = useRef(null);
 
     useEffect(() => {
-        updateCanvasSize();
-    }, []);
+        store.dispatch(updateCanvasSize());
+    }, [store.dispatch]);
 
     useEffect(() => {
-        window.addEventListener("resize", updateCanvasSize);
-        return () => window.removeEventListener("resize", updateCanvasSize);
-    }, [updateCanvasSize]);
+        const handleResize = () => store.dispatch(updateCanvasSize());
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, [store.dispatch]);
 
     return (
         <div
