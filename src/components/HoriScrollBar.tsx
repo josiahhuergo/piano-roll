@@ -1,6 +1,6 @@
-import type { Graphics } from "pixi.js";
+import type { FederatedPointerEvent, Graphics } from "pixi.js";
 import { remap } from "../helpers/util";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useSelector } from "react-redux";
 import {
     selectCanvasSize,
@@ -9,7 +9,10 @@ import {
     selectPianoBarWidth,
     selectScrollBarThickness,
     selectTotalWidth,
+    setHoriScroll,
+    store,
 } from "../store/store";
+import { useApplication } from "@pixi/react";
 
 function Background() {
     const scrollBarThickness = useSelector(selectScrollBarThickness);
@@ -17,8 +20,6 @@ function Background() {
 
     const draw = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing hori scroll bar background");
-
             graphics.clear();
             graphics
                 .rect(0, 0, noteGridWidth, scrollBarThickness)
@@ -36,6 +37,9 @@ function Bar() {
     const totalWidth = useSelector(selectTotalWidth);
     const noteGridWidth = useSelector(selectNoteGridWidth);
 
+    const app = useApplication();
+    const stage = app.app.stage;
+
     const barWidth = remap(noteGridWidth, 0, totalWidth, 0, noteGridWidth);
 
     const barX = remap(
@@ -48,16 +52,65 @@ function Bar() {
 
     const draw = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing hori scroll bar");
             graphics.clear();
             graphics.rect(0, 0, barWidth, scrollBarThickness).fill(0x666666);
         },
         [noteGridWidth, totalWidth, scrollBarThickness]
     );
 
+    const dragging = useRef(false);
+    const clickVertScrollAmt = useRef(0);
+    const clickMouseX = useRef(0);
+
+    const onPointerMove = useCallback(
+        (event: FederatedPointerEvent) => {
+            if (dragging.current) {
+                const scrollAmount =
+                    clickVertScrollAmt.current +
+                    remap(
+                        event.globalX - clickMouseX.current,
+                        0,
+                        noteGridWidth - barWidth,
+                        0,
+                        totalWidth - noteGridWidth
+                    );
+
+                store.dispatch(setHoriScroll(scrollAmount));
+            }
+        },
+        [dragging, noteGridWidth, barWidth, totalWidth]
+    );
+
+    const onPointerUp = useCallback(() => {
+        if (dragging) {
+            dragging.current = false;
+
+            stage.off("pointermove", onPointerMove);
+            stage.off("pointerup", onPointerUp);
+            stage.off("pointerupoutside", onPointerUp);
+        }
+    }, [dragging, onPointerMove]);
+
+    const onPointerDown = useCallback(
+        (event: FederatedPointerEvent) => {
+            dragging.current = true;
+            clickVertScrollAmt.current = horiScrollAmount;
+            clickMouseX.current = event.globalX;
+
+            stage.on("pointermove", onPointerMove);
+            stage.on("pointerup", onPointerUp);
+            stage.on("pointerupoutside", onPointerUp);
+        },
+        [horiScrollAmount, onPointerMove, onPointerUp]
+    );
+
     return (
         <pixiContainer x={barX}>
-            <pixiGraphics draw={draw} />
+            <pixiGraphics
+                draw={draw}
+                eventMode="static"
+                onPointerDown={onPointerDown}
+            />
         </pixiContainer>
     );
 }

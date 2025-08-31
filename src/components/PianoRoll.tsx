@@ -5,7 +5,6 @@ import { extend } from "@pixi/react";
 import { Container, FederatedWheelEvent, Graphics, Text } from "pixi.js";
 import VertScrollBar from "./VertScrollBar";
 import HoriScrollBar from "./HoriScrollBar";
-import { useRef } from "react";
 import { useSelector } from "react-redux";
 import {
     horizontalScroll,
@@ -18,15 +17,10 @@ extend({ Container, Graphics, Text });
 
 function Background() {
     const canvasSize = useSelector(selectCanvasSize);
-    let i = useRef(0);
 
     return (
         <pixiGraphics
             draw={(graphics: Graphics) => {
-                console.log("-------REDRAW TIME!-------", i);
-                i.current += 1;
-                console.log("Drawing piano roll background");
-
                 graphics.clear();
 
                 graphics

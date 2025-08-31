@@ -1,7 +1,7 @@
 import type { FederatedPointerEvent, Graphics } from "pixi.js";
 import { remap } from "../helpers/util";
 import { useApplication } from "@pixi/react";
-import { useCallback, useState } from "react";
+import { useCallback, useRef } from "react";
 import {
     selectCanvasSize,
     selectMeterBarHeight,
@@ -20,7 +20,6 @@ function Background() {
 
     const draw = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing vert scroll bar background");
             graphics.clear();
             graphics
                 .rect(0, 0, scrollBarThickness, noteGridHeight)
@@ -53,49 +52,57 @@ function Bar() {
 
     const draw = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing vert scroll bar");
             graphics.clear();
             graphics.rect(0, 0, scrollBarThickness, barHeight).fill(0x666666);
         },
-        [scrollBarThickness, noteGridHeight, totalHeight]
+        [scrollBarThickness, barHeight]
     );
 
-    const [dragging, setDragging] = useState(false);
-    const [clickVertScrollAmt, setClickVertScrollAmt] = useState(0);
-    const [clickMouseY, setClickMouseY] = useState(0);
+    const dragging = useRef(false);
+    const clickVertScrollAmt = useRef(0);
+    const clickMouseY = useRef(0);
 
-    const onPointerMove = (event: FederatedPointerEvent) => {
-        if (dragging) {
-            const scrollAmount = remap(
-                clickVertScrollAmt + (event.screenY - clickMouseY),
-                0,
-                noteGridHeight - barHeight,
-                0,
-                totalHeight - noteGridHeight
-            );
-            store.dispatch(setVertScroll(scrollAmount));
-        }
-    };
+    const onPointerMove = useCallback(
+        (event: FederatedPointerEvent) => {
+            if (dragging.current) {
+                const scrollAmount =
+                    clickVertScrollAmt.current +
+                    remap(
+                        event.globalY - clickMouseY.current,
+                        0,
+                        noteGridHeight - barHeight,
+                        0,
+                        totalHeight - noteGridHeight
+                    );
 
-    const onPointerUp = () => {
+                store.dispatch(setVertScroll(scrollAmount));
+            }
+        },
+        [dragging, noteGridHeight, barHeight, totalHeight]
+    );
+
+    const onPointerUp = useCallback(() => {
         if (dragging) {
-            setDragging(false);
+            dragging.current = false;
 
             stage.off("pointermove", onPointerMove);
             stage.off("pointerup", onPointerUp);
             stage.off("pointerupoutside", onPointerUp);
         }
-    };
+    }, [dragging, onPointerMove]);
 
-    const onPointerDown = (event: FederatedPointerEvent) => {
-        setDragging(true);
-        setClickVertScrollAmt(vertScrollAmount);
-        setClickMouseY(event.screenY);
+    const onPointerDown = useCallback(
+        (event: FederatedPointerEvent) => {
+            dragging.current = true;
+            clickVertScrollAmt.current = vertScrollAmount;
+            clickMouseY.current = event.globalY;
 
-        stage.on("pointermove", onPointerMove);
-        stage.on("pointerup", onPointerUp);
-        stage.on("pointerupoutside", onPointerUp);
-    };
+            stage.on("pointermove", onPointerMove);
+            stage.on("pointerup", onPointerUp);
+            stage.on("pointerupoutside", onPointerUp);
+        },
+        [vertScrollAmount, onPointerMove, onPointerUp]
+    );
 
     return (
         <pixiContainer y={barY}>

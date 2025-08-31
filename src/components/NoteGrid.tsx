@@ -29,8 +29,6 @@ function KeyLanes() {
 
     const draw = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing note grid key lanes");
-
             graphics.clear();
 
             for (let lane = 0; lane < laneCount; lane++) {
@@ -60,8 +58,6 @@ function BeatMarkers() {
 
     const draw = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing note grid beat markers");
-
             graphics.clear();
 
             for (let beat = 0; beat < beatCount; beat++) {
@@ -87,8 +83,6 @@ function OctaveMarkers() {
 
     const draw = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing note grid octave markers");
-
             graphics.clear();
 
             for (let lane = 0; lane < laneCount; lane++) {
@@ -113,8 +107,6 @@ function MeasureMarkers() {
 
     const draw = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing note grid measure markers");
-
             graphics.clear();
 
             for (let beat = 0; beat < beatCount; beat++) {
@@ -142,8 +134,6 @@ function Notes() {
         <pixiGraphics
             key={note.id}
             draw={useCallback((graphics: Graphics) => {
-                console.log("Drawing note grid notes");
-
                 graphics.clear();
 
                 graphics
@@ -175,7 +165,6 @@ export default function NoteGrid() {
     const maskRef = useRef(null);
     const drawMask = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing note grid mask");
             graphics.clear();
             graphics
                 .rect(noteGridX, noteGridY, noteGridWidth, noteGridHeight)

@@ -45,7 +45,7 @@ const initialState: AppState = {
     beatCount: 100,
     pianoBarWidth: 80,
     meterBarHeight: 20,
-    vertScrollAmount: 0,
+    vertScrollAmount: 300,
     horiScrollAmount: 0,
 };
 

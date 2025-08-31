@@ -19,7 +19,6 @@ function Background() {
 
     const draw = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing meter bar background");
             graphics.clear();
             graphics.rect(0, 0, totalWidth, meterBarHeight).fill(0x252525);
         },
@@ -36,8 +35,6 @@ function MeasureLines() {
 
     const draw = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing meter bar measure lines");
-
             graphics.clear();
             for (let beat = 0; beat < beatCount; beat++) {
                 if (beat % 4 == 0) {
@@ -59,7 +56,7 @@ function BeatNumbers() {
     const beatWidth = useSelector(selectBeatWidth);
 
     const labels = Array.from({ length: beatCount }, (_, i) => i).filter(
-        (i) => i % 4 == 0
+        (i) => i == i
     );
 
     return (
@@ -75,7 +72,7 @@ function BeatNumbers() {
                         lineHeight: 18,
                     }}
                     x={beatWidth * i + 6}
-                ></pixiText>
+                />
             ))}
         </>
     );
@@ -93,8 +90,6 @@ function MeterBarArea() {
     const maskRef = useRef(null);
     const drawMask = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing meter bar mask");
-
             graphics.clear();
             graphics
                 .rect(meterBarX, meterBarY, meterBarWidth, meterBarHeight)

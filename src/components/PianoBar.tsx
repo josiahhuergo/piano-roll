@@ -14,6 +14,37 @@ import {
     selectVertScrollAmount,
 } from "../store/store";
 
+function PitchNumbers() {
+    const laneCount = useSelector(selectLaneCount);
+    const laneHeight = useSelector(selectLaneHeight);
+    const pianoBarWidth = useSelector(selectPianoBarWidth);
+    const maxPitch = useSelector(selectMaxPitch);
+
+    const labels = Array.from({ length: laneCount }, (_, i) => i).filter(
+        (i) => i == i
+    );
+
+    return (
+        <>
+            {labels.map((i) => (
+                <pixiText
+                    text={maxPitch - i}
+                    key={i}
+                    style={{
+                        fill: pitchIsBlackKey(maxPitch - i)
+                            ? 0x555555
+                            : 0x171717,
+                        fontSize: 11,
+                        lineHeight: 18,
+                    }}
+                    x={pianoBarWidth - 25}
+                    y={laneHeight * i}
+                />
+            ))}
+        </>
+    );
+}
+
 export default function PianoBar() {
     const maxPitch = useSelector(selectMaxPitch);
     const laneHeight = useSelector(selectLaneHeight);
@@ -28,8 +59,6 @@ export default function PianoBar() {
 
     const drawPianoBar = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing piano bar");
-
             graphics.clear();
 
             for (let lane = 0; lane < laneCount; lane++) {
@@ -55,7 +84,6 @@ export default function PianoBar() {
     const maskRef = useRef(null);
     const drawMask = useCallback(
         (graphics: Graphics) => {
-            console.log("Drawing piano bar mask");
             graphics.clear();
             graphics
                 .rect(pianoBarX, pianoBarY, pianoBarWidth, pianoBarHeight)
@@ -72,6 +100,7 @@ export default function PianoBar() {
                 mask={maskRef?.current}
             >
                 <pixiGraphics draw={drawPianoBar} />
+                <PitchNumbers />
             </pixiContainer>
         </>
     );
