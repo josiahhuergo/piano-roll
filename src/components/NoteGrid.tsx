@@ -1,25 +1,29 @@
 import type { Graphics } from "pixi.js";
+import { pitchIsBlackKey } from "../helpers/util";
+import { useCallback, useRef } from "react";
+import { useSelector } from "react-redux";
 import {
     selectBeatCount,
     selectBeatWidth,
-    selectHoriScrollAmount,
     selectLaneCount,
     selectLaneHeight,
     selectMaxPitch,
     selectMeterBarHeight,
+    selectPianoBarWidth,
+    selectTotalHeight,
+    selectTotalWidth,
+} from "../store/selectors/pianoRollSelectors";
+import {
     selectNoteGridHeight,
     selectNoteGridWidth,
     selectNoteGridX,
     selectNoteGridY,
     selectNotes,
-    selectPianoBarWidth,
-    selectTotalHeight,
-    selectTotalWidth,
+} from "../store/selectors/noteGridSelectors";
+import {
+    selectHoriScrollAmount,
     selectVertScrollAmount,
-} from "../store/store";
-import { pitchIsBlackKey } from "../helpers/util";
-import { useCallback, useRef } from "react";
-import { useSelector } from "react-redux";
+} from "../store/selectors/scrollSelectors";
 
 function KeyLanes() {
     const maxPitch = useSelector(selectMaxPitch);

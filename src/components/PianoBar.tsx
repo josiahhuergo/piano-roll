@@ -7,12 +7,14 @@ import {
     selectLaneHeight,
     selectMaxPitch,
     selectMeterBarHeight,
-    selectPianoBarHeight,
     selectPianoBarWidth,
+} from "../store/selectors/pianoRollSelectors";
+import { selectVertScrollAmount } from "../store/selectors/scrollSelectors";
+import {
+    selectPianoBarHeight,
     selectPianoBarX,
     selectPianoBarY,
-    selectVertScrollAmount,
-} from "../store/store";
+} from "../store/selectors/pianoBarSelectors";
 
 function PitchNumbers() {
     const laneCount = useSelector(selectLaneCount);

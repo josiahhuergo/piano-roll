@@ -1,17 +1,19 @@
 import type { Graphics } from "pixi.js";
 import { useCallback, useRef } from "react";
+import { useSelector } from "react-redux";
 import {
     selectBeatCount,
     selectBeatWidth,
-    selectHoriScrollAmount,
     selectMeterBarHeight,
+    selectPianoBarWidth,
+    selectTotalWidth,
+} from "../store/selectors/pianoRollSelectors";
+import { selectHoriScrollAmount } from "../store/selectors/scrollSelectors";
+import {
     selectMeterBarWidth,
     selectMeterBarX,
     selectMeterBarY,
-    selectPianoBarWidth,
-    selectTotalWidth,
-} from "../store/store";
-import { useSelector } from "react-redux";
+} from "../store/selectors/meterBarSelectors";
 
 function Background() {
     const totalWidth = useSelector(selectTotalWidth);

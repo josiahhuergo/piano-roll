@@ -3,15 +3,11 @@ import PianoBar from "./PianoBar";
 import NoteGrid from "./NoteGrid";
 import { extend } from "@pixi/react";
 import { Container, FederatedWheelEvent, Graphics, Text } from "pixi.js";
-import VertScrollBar from "./VertScrollBar";
-import HoriScrollBar from "./HoriScrollBar";
+import VertScrollBar from "./ScrollBar/VertScrollBar";
+import HoriScrollBar from "./ScrollBar/HoriScrollBar";
 import { useSelector } from "react-redux";
-import {
-    horizontalScroll,
-    selectCanvasSize,
-    store,
-    verticalScroll,
-} from "../store/store";
+import { horizontalScroll, store, verticalScroll } from "../store/store";
+import { selectCanvasSize } from "../store/selectors/pianoRollSelectors";
 
 extend({ Container, Graphics, Text });
 

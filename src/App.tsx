@@ -2,7 +2,8 @@ import { Application } from "@pixi/react";
 import { useEffect, useRef } from "react";
 import PianoRoll from "./components/PianoRoll";
 import { useSelector } from "react-redux";
-import { selectCanvasSize, store, updateCanvasSize } from "./store/store";
+import { store, updateCanvasSize } from "./store/store";
+import { selectCanvasSize } from "./store/selectors/pianoRollSelectors";
 
 export default function App() {
     const canvasSize = useSelector(selectCanvasSize);
