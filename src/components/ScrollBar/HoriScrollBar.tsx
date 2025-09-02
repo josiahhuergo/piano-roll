@@ -1,23 +1,21 @@
 import type { FederatedPointerEvent, Graphics } from "pixi.js";
-import { remap } from "../../helpers/util";
+import { remap } from "../../helpers";
 import { useCallback, useRef } from "react";
-import { useSelector } from "react-redux";
-import { setHoriScroll, store } from "../../store/store";
+import { useDispatch, useSelector } from "react-redux";
 import { useApplication } from "@pixi/react";
 import {
-    selectHoriScrollAmount,
-    selectScrollBarThickness,
-} from "../../store/selectors/scrollSelectors";
-import { selectNoteGridWidth } from "../../store/selectors/noteGridSelectors";
-import {
     selectCanvasSize,
-    selectPianoBarWidth,
+    selectHoriScrollAmount,
+    selectNoteGridDimensions,
+    selectPianoBarDimensions,
+    selectScrollBarThickness,
     selectTotalWidth,
-} from "../../store/selectors/pianoRollSelectors";
+} from "../../store/selectors";
+import { setHoriScroll } from "../../store";
 
 function Background() {
     const scrollBarThickness = useSelector(selectScrollBarThickness);
-    const noteGridWidth = useSelector(selectNoteGridWidth);
+    const { noteGridWidth } = useSelector(selectNoteGridDimensions);
 
     const draw = useCallback(
         (graphics: Graphics) => {
@@ -33,10 +31,12 @@ function Background() {
 }
 
 function Bar() {
+    const dispatch = useDispatch();
+
     const scrollBarThickness = useSelector(selectScrollBarThickness);
     const horiScrollAmount = useSelector(selectHoriScrollAmount);
     const totalWidth = useSelector(selectTotalWidth);
-    const noteGridWidth = useSelector(selectNoteGridWidth);
+    const { noteGridWidth } = useSelector(selectNoteGridDimensions);
 
     const app = useApplication();
     const stage = app.app.stage;
@@ -56,45 +56,45 @@ function Bar() {
             graphics.clear();
             graphics.rect(0, 0, barWidth, scrollBarThickness).fill(0x666666);
         },
-        [noteGridWidth, totalWidth, scrollBarThickness]
+        [totalWidth, scrollBarThickness]
     );
 
-    const dragging = useRef(false);
+    const isDragging = useRef(false);
     const clickVertScrollAmt = useRef(0);
     const clickMouseX = useRef(0);
 
     const onPointerMove = useCallback(
         (event: FederatedPointerEvent) => {
-            if (dragging.current) {
-                const scrollAmount =
-                    clickVertScrollAmt.current +
-                    remap(
-                        event.globalX - clickMouseX.current,
-                        0,
-                        noteGridWidth - barWidth,
-                        0,
-                        totalWidth - noteGridWidth
-                    );
+            if (!isDragging.current) return;
 
-                store.dispatch(setHoriScroll(scrollAmount));
-            }
+            const scrollAmount =
+                clickVertScrollAmt.current +
+                remap(
+                    event.globalX - clickMouseX.current,
+                    0,
+                    noteGridWidth - barWidth,
+                    0,
+                    totalWidth - noteGridWidth
+                );
+
+            dispatch(setHoriScroll({ scrollAmount }));
         },
-        [dragging, noteGridWidth, barWidth, totalWidth]
+        [noteGridWidth, barWidth, totalWidth]
     );
 
     const onPointerUp = useCallback(() => {
-        if (dragging) {
-            dragging.current = false;
+        if (!isDragging) return;
 
-            stage.off("pointermove", onPointerMove);
-            stage.off("pointerup", onPointerUp);
-            stage.off("pointerupoutside", onPointerUp);
-        }
-    }, [dragging, onPointerMove]);
+        isDragging.current = false;
+
+        stage.off("pointermove", onPointerMove);
+        stage.off("pointerup", onPointerUp);
+        stage.off("pointerupoutside", onPointerUp);
+    }, [stage, onPointerMove]);
 
     const onPointerDown = useCallback(
         (event: FederatedPointerEvent) => {
-            dragging.current = true;
+            isDragging.current = true;
             clickVertScrollAmt.current = horiScrollAmount;
             clickMouseX.current = event.globalX;
 
@@ -102,7 +102,7 @@ function Bar() {
             stage.on("pointerup", onPointerUp);
             stage.on("pointerupoutside", onPointerUp);
         },
-        [horiScrollAmount, onPointerMove, onPointerUp]
+        [stage, horiScrollAmount, onPointerMove, onPointerUp]
     );
 
     return (
@@ -119,7 +119,7 @@ function Bar() {
 export default function VertScrollBar() {
     const scrollBarThickness = useSelector(selectScrollBarThickness);
     const canvasSize = useSelector(selectCanvasSize);
-    const pianoBarWidth = useSelector(selectPianoBarWidth);
+    const { pianoBarWidth } = useSelector(selectPianoBarDimensions);
 
     return (
         <pixiContainer

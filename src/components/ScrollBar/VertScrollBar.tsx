@@ -1,23 +1,21 @@
 import type { FederatedPointerEvent, Graphics } from "pixi.js";
-import { remap } from "../../helpers/util";
+import { remap } from "../../helpers";
 import { useApplication } from "@pixi/react";
 import { useCallback, useRef } from "react";
-import { setVertScroll, store } from "../../store/store";
-import { useSelector } from "react-redux";
-import {
-    selectScrollBarThickness,
-    selectVertScrollAmount,
-} from "../../store/selectors/scrollSelectors";
-import { selectNoteGridHeight } from "../../store/selectors/noteGridSelectors";
+import { useDispatch, useSelector } from "react-redux";
 import {
     selectCanvasSize,
     selectMeterBarHeight,
+    selectNoteGridDimensions,
+    selectScrollBarThickness,
     selectTotalHeight,
-} from "../../store/selectors/pianoRollSelectors";
+    selectVertScrollAmount,
+} from "../../store/selectors";
+import { setVertScroll } from "../../store";
 
 function Background() {
     const scrollBarThickness = useSelector(selectScrollBarThickness);
-    const noteGridHeight = useSelector(selectNoteGridHeight);
+    const { noteGridHeight } = useSelector(selectNoteGridDimensions);
 
     const draw = useCallback(
         (graphics: Graphics) => {
@@ -33,10 +31,11 @@ function Background() {
 }
 
 function Bar() {
+    const dispatch = useDispatch();
     const scrollBarThickness = useSelector(selectScrollBarThickness);
     const vertScrollAmount = useSelector(selectVertScrollAmount);
     const totalHeight = useSelector(selectTotalHeight);
-    const noteGridHeight = useSelector(selectNoteGridHeight);
+    const { noteGridHeight } = useSelector(selectNoteGridDimensions);
 
     const app = useApplication();
     const stage = app.app.stage;
@@ -59,42 +58,42 @@ function Bar() {
         [scrollBarThickness, barHeight]
     );
 
-    const dragging = useRef(false);
+    const isDragging = useRef(false);
     const clickVertScrollAmt = useRef(0);
     const clickMouseY = useRef(0);
 
     const onPointerMove = useCallback(
         (event: FederatedPointerEvent) => {
-            if (dragging.current) {
-                const scrollAmount =
-                    clickVertScrollAmt.current +
-                    remap(
-                        event.globalY - clickMouseY.current,
-                        0,
-                        noteGridHeight - barHeight,
-                        0,
-                        totalHeight - noteGridHeight
-                    );
+            if (!isDragging.current) return;
 
-                store.dispatch(setVertScroll(scrollAmount));
-            }
+            const scrollAmount =
+                clickVertScrollAmt.current +
+                remap(
+                    event.globalY - clickMouseY.current,
+                    0,
+                    noteGridHeight - barHeight,
+                    0,
+                    totalHeight - noteGridHeight
+                );
+
+            dispatch(setVertScroll({ scrollAmount }));
         },
-        [dragging, noteGridHeight, barHeight, totalHeight]
+        [dispatch, noteGridHeight, barHeight, totalHeight]
     );
 
     const onPointerUp = useCallback(() => {
-        if (dragging) {
-            dragging.current = false;
+        if (!isDragging) return;
 
-            stage.off("pointermove", onPointerMove);
-            stage.off("pointerup", onPointerUp);
-            stage.off("pointerupoutside", onPointerUp);
-        }
-    }, [dragging, onPointerMove]);
+        isDragging.current = false;
+
+        stage.off("pointermove", onPointerMove);
+        stage.off("pointerup", onPointerUp);
+        stage.off("pointerupoutside", onPointerUp);
+    }, [stage, onPointerMove]);
 
     const onPointerDown = useCallback(
         (event: FederatedPointerEvent) => {
-            dragging.current = true;
+            isDragging.current = true;
             clickVertScrollAmt.current = vertScrollAmount;
             clickMouseY.current = event.globalY;
 
@@ -102,7 +101,7 @@ function Bar() {
             stage.on("pointerup", onPointerUp);
             stage.on("pointerupoutside", onPointerUp);
         },
-        [vertScrollAmount, onPointerMove, onPointerUp]
+        [stage, vertScrollAmount, onPointerMove, onPointerUp]
     );
 
     return (

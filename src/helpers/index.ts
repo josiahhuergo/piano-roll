@@ -1,12 +1,4 @@
-export interface Dimensions {
-    width: number;
-    height: number;
-}
-
-export interface Position {
-    x: number;
-    y: number;
-}
+import type { Dimensions } from "../types";
 
 export const calculateCanvasSize = (): Dimensions => {
     const width = window.innerWidth;

@@ -1,5 +1,5 @@
 import type { Graphics } from "pixi.js";
-import { pitchIsBlackKey } from "../helpers/util";
+import { pitchIsBlackKey } from "../helpers";
 import { useCallback, useRef } from "react";
 import { useSelector } from "react-redux";
 import {
@@ -7,14 +7,10 @@ import {
     selectLaneHeight,
     selectMaxPitch,
     selectMeterBarHeight,
+    selectPianoBarDimensions,
     selectPianoBarWidth,
-} from "../store/selectors/pianoRollSelectors";
-import { selectVertScrollAmount } from "../store/selectors/scrollSelectors";
-import {
-    selectPianoBarHeight,
-    selectPianoBarX,
-    selectPianoBarY,
-} from "../store/selectors/pianoBarSelectors";
+    selectVertScrollAmount,
+} from "../store/selectors";
 
 function PitchNumbers() {
     const laneCount = useSelector(selectLaneCount);
@@ -51,13 +47,11 @@ export default function PianoBar() {
     const maxPitch = useSelector(selectMaxPitch);
     const laneHeight = useSelector(selectLaneHeight);
     const laneCount = useSelector(selectLaneCount);
-    const meterBarHeight = useSelector(selectMeterBarHeight);
     const vertScrollAmount = useSelector(selectVertScrollAmount);
 
-    const pianoBarX = useSelector(selectPianoBarX);
-    const pianoBarY = useSelector(selectPianoBarY);
-    const pianoBarWidth = useSelector(selectPianoBarWidth);
-    const pianoBarHeight = useSelector(selectPianoBarHeight);
+    const { pianoBarX, pianoBarY, pianoBarWidth, pianoBarHeight } = useSelector(
+        selectPianoBarDimensions
+    );
 
     const drawPianoBar = useCallback(
         (graphics: Graphics) => {
@@ -98,7 +92,7 @@ export default function PianoBar() {
         <>
             <pixiGraphics ref={maskRef} draw={drawMask} />
             <pixiContainer
-                y={meterBarHeight - vertScrollAmount}
+                y={pianoBarY - vertScrollAmount}
                 mask={maskRef?.current}
             >
                 <pixiGraphics draw={drawPianoBar} />

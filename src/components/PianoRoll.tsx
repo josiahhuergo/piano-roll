@@ -1,46 +1,51 @@
 import MeterBar from "./MeterBar";
 import PianoBar from "./PianoBar";
-import NoteGrid from "./NoteGrid";
+import NoteGrid from "./NoteGrid/NoteGrid";
 import { extend } from "@pixi/react";
 import { Container, FederatedWheelEvent, Graphics, Text } from "pixi.js";
 import VertScrollBar from "./ScrollBar/VertScrollBar";
 import HoriScrollBar from "./ScrollBar/HoriScrollBar";
-import { useSelector } from "react-redux";
-import { horizontalScroll, store, verticalScroll } from "../store/store";
-import { selectCanvasSize } from "../store/selectors/pianoRollSelectors";
+import { useDispatch, useSelector } from "react-redux";
+import { selectCanvasSize } from "../store/selectors";
+import { useCallback } from "react";
+import { horizontalScroll, verticalScroll } from "../store";
 
 extend({ Container, Graphics, Text });
 
 function Background() {
     const canvasSize = useSelector(selectCanvasSize);
 
-    return (
-        <pixiGraphics
-            draw={(graphics: Graphics) => {
-                graphics.clear();
-
-                graphics
-                    .rect(0, 0, canvasSize.width, canvasSize.height)
-                    .fill(0x252525);
-            }}
-        ></pixiGraphics>
+    const draw = useCallback(
+        (graphics: Graphics) => {
+            graphics.clear();
+            graphics
+                .rect(0, 0, canvasSize.width, canvasSize.height)
+                .fill(0x252525);
+        },
+        [canvasSize]
     );
+
+    return <pixiGraphics draw={draw}></pixiGraphics>;
 }
 
 export default function PianoRoll() {
+    const dispatch = useDispatch();
+
+    const wheel = useCallback(
+        (event: FederatedWheelEvent) => {
+            if (event.shiftKey) {
+                dispatch(horizontalScroll({ scrollDelta: event.deltaY }));
+            } else {
+                dispatch(verticalScroll({ scrollDelta: event.deltaY }));
+            }
+            event.stopPropagation();
+            event.preventDefault();
+        },
+        [dispatch]
+    );
+
     return (
-        <pixiContainer
-            eventMode="static"
-            onWheel={(event: FederatedWheelEvent) => {
-                if (event.shiftKey) {
-                    store.dispatch(horizontalScroll(event.deltaY));
-                } else {
-                    store.dispatch(verticalScroll(event.deltaY));
-                }
-                event.stopPropagation();
-                event.preventDefault();
-            }}
-        >
+        <pixiContainer eventMode="static" onWheel={wheel}>
             <Background />
             <MeterBar />
             <PianoBar />

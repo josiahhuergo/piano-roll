@@ -4,16 +4,12 @@ import { useSelector } from "react-redux";
 import {
     selectBeatCount,
     selectBeatWidth,
+    selectHoriScrollAmount,
+    selectMeterBarDimensions,
     selectMeterBarHeight,
     selectPianoBarWidth,
     selectTotalWidth,
-} from "../store/selectors/pianoRollSelectors";
-import { selectHoriScrollAmount } from "../store/selectors/scrollSelectors";
-import {
-    selectMeterBarWidth,
-    selectMeterBarX,
-    selectMeterBarY,
-} from "../store/selectors/meterBarSelectors";
+} from "../store/selectors";
 
 function Background() {
     const totalWidth = useSelector(selectTotalWidth);
@@ -84,10 +80,9 @@ function MeterBarArea() {
     const pianoBarWidth = useSelector(selectPianoBarWidth);
     const horiScrollAmount = useSelector(selectHoriScrollAmount);
 
-    const meterBarX = useSelector(selectMeterBarX);
-    const meterBarY = useSelector(selectMeterBarY);
-    const meterBarWidth = useSelector(selectMeterBarWidth);
-    const meterBarHeight = useSelector(selectMeterBarHeight);
+    const { meterBarX, meterBarY, meterBarWidth, meterBarHeight } = useSelector(
+        selectMeterBarDimensions
+    );
 
     const maskRef = useRef(null);
     const drawMask = useCallback(
@@ -104,7 +99,7 @@ function MeterBarArea() {
         <>
             <pixiGraphics ref={maskRef} draw={drawMask} />
             <pixiContainer
-                x={pianoBarWidth - horiScrollAmount}
+                x={meterBarX - horiScrollAmount}
                 mask={maskRef?.current}
             >
                 <Background />
