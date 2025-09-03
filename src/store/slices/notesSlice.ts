@@ -1,13 +1,17 @@
-import { createSlice } from "@reduxjs/toolkit";
-import type { NoteUI } from "../../types";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { Note } from "../../types";
 
 export interface NotesState {
-    notes: NoteUI[];
+    byId: Record<string, Note>;
+    allIds: string[];
+    selected: string[];
     nextId: number;
 }
 
 const initialState: NotesState = {
-    notes: [],
+    byId: {},
+    allIds: [],
+    selected: [],
     nextId: 0,
 };
 
@@ -15,75 +19,53 @@ export const notesSlice = createSlice({
     name: "notes",
     initialState,
     reducers: {
-        addNote: (state, action) => {
+        addNote: (state, action: PayloadAction<Omit<Note, "id">>) => {
             const { pitch, onset, duration } = action.payload;
-
-            const existingNote = state.notes.find(
+            const isDuplicate = Object.values(state.byId).some(
                 (note) =>
                     note.pitch === pitch &&
                     note.onset === onset &&
                     note.duration === duration
             );
 
-            if (existingNote) return;
+            if (isDuplicate) return;
 
-            state.notes.push({
-                pitch,
-                onset,
-                duration,
-                id: Date.now() + Math.random(),
-                selected: false,
-            });
+            const id = state.nextId.toString();
+            const note: Note = { ...action.payload, id };
+            state.byId[id] = note;
+            state.allIds.push(id);
+            state.nextId++;
         },
-        selectNote: (state, action) => {
-            const selectedNote = state.notes.find(
-                (note) => note.id === action.payload.id
-            )!;
-
-            selectedNote.selected = true;
-        },
-        deselectNote: (state, action) => {
-            const selectedNote = state.notes.find(
-                (note) => note.id == action.payload.id
-            );
-
-            if (!selectedNote) {
-                throw new Error("Note not found.");
+        updateNote: (
+            state,
+            action: PayloadAction<{ id: string; changes: Partial<Note> }>
+        ) => {
+            const { id, changes } = action.payload;
+            if (state.byId[id]) {
+                state.byId[id] = { ...state.byId[id], ...changes };
             }
-
-            selectedNote.selected = false;
         },
-        selectAllNotes: (state) => {
-            state.notes.forEach((note) => (note.selected = true));
+        deleteNote: (state, action: PayloadAction<string>) => {
+            const id = action.payload;
+            delete state.byId[id];
+            state.allIds = state.allIds.filter((noteId) => noteId !== id);
+            state.selected = state.selected.filter((noteId) => noteId !== id);
         },
-        deselectAllNotes: (state) => {
-            state.notes.forEach((note) => (note.selected = false));
+        selectNote: (state, action: PayloadAction<{ id: string }>) => {
+            const { id } = action.payload;
+            if (!state.selected.includes(id)) {
+                state.selected.push(id);
+            }
         },
-        deleteSelectedNotes: (state) => {
-            state.notes = state.notes.filter((note) => !note.selected);
+        deselectNote: (state, action: PayloadAction<{ id: string }>) => {
+            const { id: noteId } = action.payload;
+            if (state.selected.includes(noteId)) {
+                const newSelected = state.selected.filter((id) => id != noteId);
+                state.selected = newSelected;
+            }
         },
-        moveSelectedNotes: (state, action) => {
-            const updateMap = new Map<
-                number,
-                { id: number; pitch: number; onset: number }
-            >(
-                action.payload.map(
-                    (update: { id: number; pitch: number; onset: number }) => [
-                        update.id,
-                        update,
-                    ]
-                )
-            );
-
-            state.notes.forEach((note) => {
-                if (note.selected) {
-                    const update = updateMap.get(note.id);
-                    if (update) {
-                        note.onset = update.onset;
-                        note.pitch = update.pitch;
-                    }
-                }
-            });
+        clearSelection: (state) => {
+            state.selected = [];
         },
     },
 });

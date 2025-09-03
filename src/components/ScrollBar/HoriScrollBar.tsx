@@ -4,8 +4,8 @@ import { useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useApplication } from "@pixi/react";
 import {
-    selectCanvasSize,
     selectHoriScrollAmount,
+    selectHoriScrollBarDimensions,
     selectNoteGridDimensions,
     selectPianoBarDimensions,
     selectScrollBarThickness,
@@ -37,24 +37,19 @@ function Bar() {
     const horiScrollAmount = useSelector(selectHoriScrollAmount);
     const totalWidth = useSelector(selectTotalWidth);
     const { noteGridWidth } = useSelector(selectNoteGridDimensions);
+    const { horiScrollBarX, horiScrollBarWidth } = useSelector(
+        selectHoriScrollBarDimensions
+    );
 
     const app = useApplication();
     const stage = app.app.stage;
 
-    const barWidth = remap(noteGridWidth, 0, totalWidth, 0, noteGridWidth);
-
-    const barX = remap(
-        horiScrollAmount,
-        0,
-        totalWidth - noteGridWidth,
-        0,
-        noteGridWidth - barWidth
-    );
-
     const draw = useCallback(
         (graphics: Graphics) => {
             graphics.clear();
-            graphics.rect(0, 0, barWidth, scrollBarThickness).fill(0x666666);
+            graphics
+                .rect(0, 0, horiScrollBarWidth, scrollBarThickness)
+                .fill(0x666666);
         },
         [totalWidth, scrollBarThickness]
     );
@@ -72,14 +67,14 @@ function Bar() {
                 remap(
                     event.globalX - clickMouseX.current,
                     0,
-                    noteGridWidth - barWidth,
+                    noteGridWidth - horiScrollBarWidth,
                     0,
                     totalWidth - noteGridWidth
                 );
 
             dispatch(setHoriScroll({ scrollAmount }));
         },
-        [noteGridWidth, barWidth, totalWidth]
+        [noteGridWidth, horiScrollBarWidth, totalWidth]
     );
 
     const onPointerUp = useCallback(() => {
@@ -106,7 +101,7 @@ function Bar() {
     );
 
     return (
-        <pixiContainer x={barX}>
+        <pixiContainer x={horiScrollBarX}>
             <pixiGraphics
                 draw={draw}
                 eventMode="static"
@@ -117,15 +112,11 @@ function Bar() {
 }
 
 export default function VertScrollBar() {
-    const scrollBarThickness = useSelector(selectScrollBarThickness);
-    const canvasSize = useSelector(selectCanvasSize);
+    const { horiScrollBarY } = useSelector(selectHoriScrollBarDimensions);
     const { pianoBarWidth } = useSelector(selectPianoBarDimensions);
 
     return (
-        <pixiContainer
-            x={pianoBarWidth}
-            y={canvasSize.height - scrollBarThickness}
-        >
+        <pixiContainer x={pianoBarWidth} y={horiScrollBarY}>
             <Background />
             <Bar />
         </pixiContainer>

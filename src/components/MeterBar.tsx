@@ -1,5 +1,5 @@
 import type { Graphics } from "pixi.js";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, type Ref } from "react";
 import { useSelector } from "react-redux";
 import {
     selectBeatCount,
@@ -7,7 +7,6 @@ import {
     selectHoriScrollAmount,
     selectMeterBarDimensions,
     selectMeterBarHeight,
-    selectPianoBarWidth,
     selectTotalWidth,
 } from "../store/selectors";
 
@@ -53,38 +52,31 @@ function BeatNumbers() {
     const beatCount = useSelector(selectBeatCount);
     const beatWidth = useSelector(selectBeatWidth);
 
-    const labels = Array.from({ length: beatCount }, (_, i) => i).filter(
+    const beatNumbers = Array.from({ length: beatCount }, (_, i) => i).filter(
         (i) => i == i
     );
 
-    return (
-        <>
-            {labels.map((i) => (
-                <pixiText
-                    text={i}
-                    key={i}
-                    style={{
-                        fill: 0x555555,
-                        fontSize: 11,
-                        align: "left",
-                        lineHeight: 18,
-                    }}
-                    x={beatWidth * i + 6}
-                />
-            ))}
-        </>
-    );
+    const beatLabels = beatNumbers.map((i) => (
+        <pixiText
+            text={i}
+            key={i}
+            style={{
+                fill: 0x555555,
+                fontSize: 11,
+                align: "left",
+                lineHeight: 18,
+            }}
+            x={beatWidth * i + 6}
+        />
+    ));
+
+    return <>{beatLabels}</>;
 }
 
-function MeterBarArea() {
-    const pianoBarWidth = useSelector(selectPianoBarWidth);
-    const horiScrollAmount = useSelector(selectHoriScrollAmount);
-
+function MeterBarMask({ ref }: { ref: Ref<Graphics> }) {
     const { meterBarX, meterBarY, meterBarWidth, meterBarHeight } = useSelector(
         selectMeterBarDimensions
     );
-
-    const maskRef = useRef(null);
     const drawMask = useCallback(
         (graphics: Graphics) => {
             graphics.clear();
@@ -94,10 +86,23 @@ function MeterBarArea() {
         },
         [meterBarX, meterBarY, meterBarWidth, meterBarHeight]
     );
+    return (
+        <>
+            <pixiGraphics ref={ref} draw={drawMask} />
+        </>
+    );
+}
+
+export default function MeterBar() {
+    const horiScrollAmount = useSelector(selectHoriScrollAmount);
+
+    const { meterBarX } = useSelector(selectMeterBarDimensions);
+
+    const maskRef = useRef(null);
 
     return (
         <>
-            <pixiGraphics ref={maskRef} draw={drawMask} />
+            <MeterBarMask ref={maskRef} />
             <pixiContainer
                 x={meterBarX - horiScrollAmount}
                 mask={maskRef?.current}
@@ -106,14 +111,6 @@ function MeterBarArea() {
                 <MeasureLines />
                 <BeatNumbers />
             </pixiContainer>
-        </>
-    );
-}
-
-export default function MeterBar() {
-    return (
-        <>
-            <MeterBarArea />
         </>
     );
 }

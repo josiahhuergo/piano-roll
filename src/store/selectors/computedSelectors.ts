@@ -1,11 +1,14 @@
 import { createSelector } from "@reduxjs/toolkit";
 import {
     selectCanvasSize,
+    selectHoriScrollAmount,
     selectMeterBarHeight,
     selectPianoBarWidth,
     selectScrollBarThickness,
+    selectVertScrollAmount,
 } from "./viewportSelectors";
 import { selectTotalHeight, selectTotalWidth } from "./gridSelectors";
+import { remap } from "../../helpers";
 
 export const selectIsVertOverflow = createSelector(
     [selectTotalHeight, selectCanvasSize],
@@ -94,6 +97,82 @@ export const selectMeterBarDimensions = createSelector(
                 ? canvasSize.width - pianoBarWidth - scrollBarThickness
                 : canvasSize.width - pianoBarWidth,
             meterBarHeight: meterBarHeight,
+        };
+    }
+);
+
+export const selectVertScrollBarDimensions = createSelector(
+    [
+        selectCanvasSize,
+        selectScrollBarThickness,
+        selectVertScrollAmount,
+        selectTotalHeight,
+        selectNoteGridDimensions,
+    ],
+    (
+        canvasSize,
+        scrollBarThickness,
+        vertScrollAmount,
+        totalHeight,
+        noteGridDimensions
+    ) => {
+        const noteGridHeight = noteGridDimensions.noteGridHeight;
+        const vertScrollBarHeight = remap(
+            noteGridHeight,
+            0,
+            totalHeight,
+            0,
+            noteGridHeight
+        );
+        return {
+            vertScrollBarX: canvasSize.width - scrollBarThickness,
+            vertScrollBarY: remap(
+                vertScrollAmount,
+                0,
+                totalHeight - noteGridHeight,
+                0,
+                noteGridHeight - vertScrollBarHeight
+            ),
+            vertScrollBarWidth: scrollBarThickness,
+            vertScrollBarHeight,
+        };
+    }
+);
+
+export const selectHoriScrollBarDimensions = createSelector(
+    [
+        selectCanvasSize,
+        selectScrollBarThickness,
+        selectHoriScrollAmount,
+        selectTotalHeight,
+        selectNoteGridDimensions,
+    ],
+    (
+        canvasSize,
+        scrollBarThickness,
+        horiScrollAmount,
+        totalWidth,
+        noteGridDimensions
+    ) => {
+        const noteGridWidth = noteGridDimensions.noteGridWidth;
+        const horiScrollBarWidth = remap(
+            noteGridWidth,
+            0,
+            totalWidth,
+            0,
+            noteGridWidth
+        );
+        return {
+            horiScrollBarX: remap(
+                horiScrollAmount,
+                0,
+                totalWidth - noteGridWidth,
+                0,
+                noteGridWidth - horiScrollBarWidth
+            ),
+            horiScrollBarY: canvasSize.height - scrollBarThickness,
+            horiScrollBarWidth: horiScrollBarWidth,
+            horiScrollBarHeight: scrollBarThickness,
         };
     }
 );

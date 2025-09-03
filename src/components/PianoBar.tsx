@@ -1,12 +1,11 @@
 import type { Graphics } from "pixi.js";
 import { pitchIsBlackKey } from "../helpers";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, type Ref } from "react";
 import { useSelector } from "react-redux";
 import {
     selectLaneCount,
     selectLaneHeight,
     selectMaxPitch,
-    selectMeterBarHeight,
     selectPianoBarDimensions,
     selectPianoBarWidth,
     selectVertScrollAmount,
@@ -18,29 +17,41 @@ function PitchNumbers() {
     const pianoBarWidth = useSelector(selectPianoBarWidth);
     const maxPitch = useSelector(selectMaxPitch);
 
-    const labels = Array.from({ length: laneCount }, (_, i) => i).filter(
+    const pitchNumbers = Array.from({ length: laneCount }, (_, i) => i).filter(
         (i) => i == i
     );
 
-    return (
-        <>
-            {labels.map((i) => (
-                <pixiText
-                    text={maxPitch - i}
-                    key={i}
-                    style={{
-                        fill: pitchIsBlackKey(maxPitch - i)
-                            ? 0x555555
-                            : 0x171717,
-                        fontSize: 11,
-                        lineHeight: 18,
-                    }}
-                    x={pianoBarWidth - 25}
-                    y={laneHeight * i}
-                />
-            ))}
-        </>
+    const pitchLabels = pitchNumbers.map((i) => (
+        <pixiText
+            text={maxPitch - i}
+            key={i}
+            style={{
+                fill: pitchIsBlackKey(maxPitch - i) ? 0x555555 : 0x171717,
+                fontSize: 11,
+                lineHeight: 18,
+            }}
+            x={pianoBarWidth - 25}
+            y={laneHeight * i}
+        />
+    ));
+
+    return <>{pitchLabels}</>;
+}
+
+function PianoBarMask({ ref }: { ref: Ref<Graphics> }) {
+    const { pianoBarX, pianoBarY, pianoBarWidth, pianoBarHeight } = useSelector(
+        selectPianoBarDimensions
     );
+    const drawMask = useCallback(
+        (graphics: Graphics) => {
+            graphics.clear();
+            graphics
+                .rect(pianoBarX, pianoBarY, pianoBarWidth, pianoBarHeight)
+                .fill("black");
+        },
+        [pianoBarX, pianoBarY, pianoBarWidth, pianoBarHeight]
+    );
+    return <pixiGraphics ref={ref} draw={drawMask} />;
 }
 
 export default function PianoBar() {
@@ -49,9 +60,7 @@ export default function PianoBar() {
     const laneCount = useSelector(selectLaneCount);
     const vertScrollAmount = useSelector(selectVertScrollAmount);
 
-    const { pianoBarX, pianoBarY, pianoBarWidth, pianoBarHeight } = useSelector(
-        selectPianoBarDimensions
-    );
+    const { pianoBarY, pianoBarWidth } = useSelector(selectPianoBarDimensions);
 
     const drawPianoBar = useCallback(
         (graphics: Graphics) => {
@@ -78,19 +87,10 @@ export default function PianoBar() {
     );
 
     const maskRef = useRef(null);
-    const drawMask = useCallback(
-        (graphics: Graphics) => {
-            graphics.clear();
-            graphics
-                .rect(pianoBarX, pianoBarY, pianoBarWidth, pianoBarHeight)
-                .fill("black");
-        },
-        [pianoBarX, pianoBarY, pianoBarWidth, pianoBarHeight]
-    );
 
     return (
         <>
-            <pixiGraphics ref={maskRef} draw={drawMask} />
+            <PianoBarMask ref={maskRef} />
             <pixiContainer
                 y={pianoBarY - vertScrollAmount}
                 mask={maskRef?.current}

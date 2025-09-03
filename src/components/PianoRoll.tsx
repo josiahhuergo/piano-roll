@@ -12,7 +12,7 @@ import { horizontalScroll, verticalScroll } from "../store";
 
 extend({ Container, Graphics, Text });
 
-function Background() {
+function PianoRollBackground() {
     const canvasSize = useSelector(selectCanvasSize);
 
     const draw = useCallback(
@@ -46,7 +46,7 @@ export default function PianoRoll() {
 
     return (
         <pixiContainer eventMode="static" onWheel={wheel}>
-            <Background />
+            <PianoRollBackground />
             <MeterBar />
             <PianoBar />
             <NoteGrid />

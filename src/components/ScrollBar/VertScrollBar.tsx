@@ -4,12 +4,12 @@ import { useApplication } from "@pixi/react";
 import { useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-    selectCanvasSize,
     selectMeterBarHeight,
     selectNoteGridDimensions,
     selectScrollBarThickness,
     selectTotalHeight,
     selectVertScrollAmount,
+    selectVertScrollBarDimensions,
 } from "../../store/selectors";
 import { setVertScroll } from "../../store";
 
@@ -32,7 +32,10 @@ function Background() {
 
 function Bar() {
     const dispatch = useDispatch();
-    const scrollBarThickness = useSelector(selectScrollBarThickness);
+
+    const { vertScrollBarY, vertScrollBarWidth, vertScrollBarHeight } =
+        useSelector(selectVertScrollBarDimensions);
+
     const vertScrollAmount = useSelector(selectVertScrollAmount);
     const totalHeight = useSelector(selectTotalHeight);
     const { noteGridHeight } = useSelector(selectNoteGridDimensions);
@@ -40,22 +43,14 @@ function Bar() {
     const app = useApplication();
     const stage = app.app.stage;
 
-    const barHeight = remap(noteGridHeight, 0, totalHeight, 0, noteGridHeight);
-
-    const barY = remap(
-        vertScrollAmount,
-        0,
-        totalHeight - noteGridHeight,
-        0,
-        noteGridHeight - barHeight
-    );
-
     const draw = useCallback(
         (graphics: Graphics) => {
             graphics.clear();
-            graphics.rect(0, 0, scrollBarThickness, barHeight).fill(0x666666);
+            graphics
+                .rect(0, 0, vertScrollBarWidth, vertScrollBarHeight)
+                .fill(0x666666);
         },
-        [scrollBarThickness, barHeight]
+        [vertScrollBarWidth, vertScrollBarHeight]
     );
 
     const isDragging = useRef(false);
@@ -71,14 +66,14 @@ function Bar() {
                 remap(
                     event.globalY - clickMouseY.current,
                     0,
-                    noteGridHeight - barHeight,
+                    noteGridHeight - vertScrollBarHeight,
                     0,
                     totalHeight - noteGridHeight
                 );
 
             dispatch(setVertScroll({ scrollAmount }));
         },
-        [dispatch, noteGridHeight, barHeight, totalHeight]
+        [dispatch, noteGridHeight, vertScrollBarHeight, totalHeight]
     );
 
     const onPointerUp = useCallback(() => {
@@ -105,7 +100,7 @@ function Bar() {
     );
 
     return (
-        <pixiContainer y={barY}>
+        <pixiContainer y={vertScrollBarY}>
             <pixiGraphics
                 draw={draw}
                 eventMode="static"
@@ -116,15 +111,11 @@ function Bar() {
 }
 
 export default function VertScrollBar() {
-    const scrollBarThickness = useSelector(selectScrollBarThickness);
+    const { vertScrollBarX } = useSelector(selectVertScrollBarDimensions);
     const meterBarHeight = useSelector(selectMeterBarHeight);
-    const canvasSize = useSelector(selectCanvasSize);
 
     return (
-        <pixiContainer
-            x={canvasSize.width - scrollBarThickness}
-            y={meterBarHeight}
-        >
+        <pixiContainer x={vertScrollBarX} y={meterBarHeight}>
             <Background />
             <Bar />
         </pixiContainer>
