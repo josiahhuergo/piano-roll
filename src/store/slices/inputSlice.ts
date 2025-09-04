@@ -35,8 +35,7 @@ export const inputSlice = createSlice({
             if (state.isShiftDown) state.isShiftDown = false;
         },
         pressMouse: (state, action) => {
-            const { mousePos } = action.payload;
-            state.mouseDownPos = mousePos;
+            state.mouseDownPos = action.payload;
             if (!state.isMouseDown) state.isMouseDown = true;
         },
         releaseMouse: (state) => {

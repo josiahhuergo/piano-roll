@@ -2,13 +2,32 @@ import MeterBar from "./MeterBar";
 import PianoBar from "./PianoBar";
 import NoteGrid from "./NoteGrid/NoteGrid";
 import { extend } from "@pixi/react";
-import { Container, FederatedWheelEvent, Graphics, Text } from "pixi.js";
+import {
+    Container,
+    FederatedPointerEvent,
+    FederatedWheelEvent,
+    Graphics,
+    Text,
+} from "pixi.js";
 import VertScrollBar from "./ScrollBar/VertScrollBar";
 import HoriScrollBar from "./ScrollBar/HoriScrollBar";
 import { useDispatch, useSelector } from "react-redux";
-import { selectCanvasSize } from "../store/selectors";
+import {
+    selectCanvasSize,
+    selectIsDragging,
+    selectIsMouseDown,
+    selectMouseDownPos,
+} from "../store/selectors";
 import { useCallback } from "react";
-import { horizontalScroll, verticalScroll } from "../store";
+import {
+    horizontalScroll,
+    pressCtrl,
+    pressMouse,
+    pressShift,
+    releaseMouse,
+    setDragging,
+    verticalScroll,
+} from "../store";
 
 extend({ Container, Graphics, Text });
 
@@ -31,6 +50,10 @@ function PianoRollBackground() {
 export default function PianoRoll() {
     const dispatch = useDispatch();
 
+    const mouseDownPos = useSelector(selectMouseDownPos);
+    const isDragging = useSelector(selectIsDragging);
+    const isMouseDown = useSelector(selectIsMouseDown);
+
     const wheel = useCallback(
         (event: FederatedWheelEvent) => {
             if (event.shiftKey) {
@@ -44,8 +67,41 @@ export default function PianoRoll() {
         [dispatch]
     );
 
+    const pointerDown = useCallback(
+        (event: FederatedPointerEvent) => {
+            dispatch(
+                pressMouse({ mousePos: { x: event.offsetX, y: event.offsetY } })
+            );
+        },
+        [dispatch]
+    );
+
+    const pointerUp = useCallback(() => {
+        dispatch(releaseMouse());
+    }, [dispatch]);
+
+    const pointerMove = useCallback(
+        (event: FederatedPointerEvent) => {
+            if (
+                isMouseDown &&
+                !isDragging &&
+                (event.global.x != mouseDownPos.x ||
+                    event.global.y != mouseDownPos.y)
+            ) {
+                dispatch(setDragging(true));
+            }
+        },
+        [dispatch, mouseDownPos, isMouseDown, isDragging]
+    );
+
     return (
-        <pixiContainer eventMode="static" onWheel={wheel}>
+        <pixiContainer
+            eventMode="static"
+            onWheel={wheel}
+            onPointerDown={pointerDown}
+            onPointerUp={pointerUp}
+            onPointerMove={pointerMove}
+        >
             <PianoRollBackground />
             <MeterBar />
             <PianoBar />

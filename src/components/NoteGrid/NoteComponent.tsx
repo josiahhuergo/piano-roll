@@ -1,5 +1,5 @@
 import type { FederatedPointerEvent, Graphics } from "pixi.js";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useApplication } from "@pixi/react";
 import type { Note } from "../../types";
 import { useDispatch, useSelector } from "react-redux";
@@ -42,37 +42,28 @@ const useNoteInteraction = (note: Note) => {
 
     const onPointerMove = useCallback(
         (event: FederatedPointerEvent) => {
-            console.log("Are we dragging?", isDragging);
-            if (isDragging) {
-                console.log("Moving note...");
-                const deltaOnset = (event.globalX - mouseDownPos.x) / beatWidth;
-                const deltaPitch =
-                    (event.globalY - mouseDownPos.y) / laneHeight;
-                selectedNotes.forEach((note) => {
-                    const newPitch = clamp(
-                        note.pitch + deltaPitch,
-                        minPitch,
-                        maxPitch
-                    );
-                    const newOnset = Math.max(0, note.onset + deltaOnset);
-                    dispatch(
-                        updateNote({
-                            id: note.id,
-                            changes: { pitch: newPitch, onset: newOnset },
-                        })
-                    );
-                });
-            }
+            if (!isDragging) return;
+
+            const deltaOnset = (event.globalX - mouseDownPos.x) / beatWidth;
+            const deltaPitch = (event.globalY - mouseDownPos.y) / laneHeight;
+
+            selectedNotes.forEach((note) => {
+                const newPitch = clamp(
+                    note.pitch - deltaPitch,
+                    minPitch,
+                    maxPitch
+                );
+                const newOnset = Math.max(0, note.onset + deltaOnset);
+
+                dispatch(
+                    updateNote({
+                        id: note.id,
+                        changes: { pitch: newPitch, onset: newOnset },
+                    })
+                );
+            });
         },
-        [
-            dispatch,
-            beatWidth,
-            laneHeight,
-            isDragging,
-            minPitch,
-            maxPitch,
-            selectedNotes,
-        ]
+        [dispatch, beatWidth, laneHeight, isDragging, minPitch, maxPitch]
     );
 
     const onPointerUp = useCallback(() => {
@@ -113,12 +104,7 @@ export default function NoteComponent({ note }: { note: Note }) {
             graphics.clear();
 
             graphics
-                .rect(
-                    note.onset * beatWidth,
-                    (maxPitch - note.pitch) * laneHeight,
-                    note.duration * beatWidth,
-                    laneHeight
-                )
+                .rect(0, 0, note.duration * beatWidth, laneHeight)
                 .fill(0x666666);
             if (isNoteSelected) {
                 graphics.stroke("0xffffff");
@@ -132,10 +118,15 @@ export default function NoteComponent({ note }: { note: Note }) {
     const zIndex = isNoteSelected ? 1 : 0;
 
     return (
-        <pixiGraphics
-            draw={draw}
-            onPointerDown={onPointerDown}
-            zIndex={zIndex}
-        />
+        <pixiContainer
+            x={note.onset * beatWidth}
+            y={(maxPitch - note.pitch) * laneHeight}
+        >
+            <pixiGraphics
+                draw={draw}
+                onPointerDown={onPointerDown}
+                zIndex={zIndex}
+            />
+        </pixiContainer>
     );
 }

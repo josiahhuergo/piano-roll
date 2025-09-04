@@ -1,21 +1,13 @@
 import { Application } from "@pixi/react";
 import { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-    selectCanvasSize,
-    selectIsDragging,
-    selectIsMouseDown,
-    selectMouseDownPos,
-} from "../store/selectors";
+import { selectCanvasSize } from "../store/selectors";
 import {
     addNote,
     pressCtrl,
-    pressMouse,
     pressShift,
     releaseCtrl,
-    releaseMouse,
     releaseShift,
-    setDragging,
     updateCanvasSize,
 } from "../store";
 import { useWindowEvent } from "../hooks";
@@ -75,47 +67,6 @@ export default function App() {
             }
         },
         [dispatch]
-    );
-
-    useWindowEvent(
-        "pointerdown",
-        (event: PointerEvent) => {
-            dispatch(
-                pressMouse({ mousePos: { x: event.offsetX, y: event.offsetY } })
-            );
-        },
-        [dispatch]
-    );
-
-    useWindowEvent(
-        "pointerup",
-        () => {
-            dispatch(releaseMouse());
-        },
-        [dispatch]
-    );
-
-    const mouseDownPos = useSelector(selectMouseDownPos);
-    const isDragging = useSelector(selectIsDragging);
-    const isMouseDown = useSelector(selectIsMouseDown);
-
-    useWindowEvent(
-        "pointermove",
-        (event: PointerEvent) => {
-            const global = {
-                x: event.offsetX,
-                y: event.offsetY,
-            };
-            if (
-                isMouseDown &&
-                !isDragging &&
-                global.x != mouseDownPos.x &&
-                global.y != mouseDownPos.y
-            ) {
-                dispatch(setDragging(true));
-            }
-        },
-        [dispatch, mouseDownPos, isMouseDown, isDragging]
     );
 
     useWindowEvent(
