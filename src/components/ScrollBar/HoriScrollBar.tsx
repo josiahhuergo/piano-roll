@@ -1,11 +1,12 @@
 import type { FederatedPointerEvent, Graphics } from "pixi.js";
-import { remap } from "../../helpers";
+import { clamp, remap } from "../../helpers";
 import { useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useApplication } from "@pixi/react";
 import {
     selectHoriScrollAmount,
     selectHoriScrollBarDimensions,
+    selectMaxHoriScroll,
     selectNoteGridDimensions,
     selectPianoBarDimensions,
     selectScrollBarThickness,
@@ -51,26 +52,30 @@ function Bar() {
                 .rect(0, 0, horiScrollBarWidth, scrollBarThickness)
                 .fill(0x666666);
         },
-        [totalWidth, scrollBarThickness]
+        [scrollBarThickness, horiScrollBarWidth]
     );
 
     const isDragging = useRef(false);
     const clickVertScrollAmt = useRef(0);
     const clickMouseX = useRef(0);
+    const maxHoriScroll = useSelector(selectMaxHoriScroll);
 
     const onPointerMove = useCallback(
         (event: FederatedPointerEvent) => {
             if (!isDragging.current) return;
 
-            const scrollAmount =
+            const scrollAmount = clamp(
                 clickVertScrollAmt.current +
-                remap(
-                    event.globalX - clickMouseX.current,
-                    0,
-                    noteGridWidth - horiScrollBarWidth,
-                    0,
-                    totalWidth - noteGridWidth
-                );
+                    remap(
+                        event.globalX - clickMouseX.current,
+                        0,
+                        noteGridWidth - horiScrollBarWidth,
+                        0,
+                        totalWidth - noteGridWidth
+                    ),
+                0,
+                maxHoriScroll
+            );
 
             dispatch(setHoriScroll({ scrollAmount }));
         },

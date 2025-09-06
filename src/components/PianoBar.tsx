@@ -83,7 +83,7 @@ export default function PianoBar() {
                 }
             }
         },
-        [laneCount, laneHeight, pianoBarWidth]
+        [maxPitch, laneCount, laneHeight, pianoBarWidth]
     );
 
     const maskRef = useRef(null);

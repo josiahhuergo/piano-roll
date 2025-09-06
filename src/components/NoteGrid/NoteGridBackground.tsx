@@ -3,15 +3,18 @@ import { useDispatch, useSelector } from "react-redux";
 import {
     selectBeatCount,
     selectBeatWidth,
+    selectHoriScrollAmount,
     selectLaneCount,
     selectLaneHeight,
     selectMaxPitch,
+    selectNoteGridDimensions,
     selectTotalHeight,
     selectTotalWidth,
+    selectVertScrollAmount,
 } from "../../store/selectors";
-import type { Graphics } from "pixi.js";
+import type { FederatedPointerEvent, Graphics } from "pixi.js";
 import { pitchIsBlackKey } from "../../helpers";
-import { clearSelection } from "../../store";
+import { addNote, clearSelection } from "../../store";
 
 function KeyLanes() {
     const dispatch = useDispatch();
@@ -39,7 +42,7 @@ function KeyLanes() {
                     .stroke({ color: 0x212121 });
             }
         },
-        [laneCount, laneHeight, totalWidth]
+        [laneCount, maxPitch, laneHeight, totalWidth]
     );
 
     const click = useCallback(() => dispatch(clearSelection()), [dispatch]);
@@ -90,7 +93,7 @@ function OctaveMarkers() {
                 }
             }
         },
-        [laneCount, laneHeight, totalWidth]
+        [laneCount, laneHeight, totalWidth, maxPitch]
     );
 
     return <pixiGraphics draw={draw}></pixiGraphics>;
@@ -121,12 +124,41 @@ function MeasureMarkers() {
 }
 
 export default function NoteGridBackground() {
+    const dispatch = useDispatch();
+    const laneHeight = useSelector(selectLaneHeight);
+    const beatWidth = useSelector(selectBeatWidth);
+    const maxPitch = useSelector(selectMaxPitch);
+    const { noteGridX, noteGridY } = useSelector(selectNoteGridDimensions);
+    const scrollX = useSelector(selectHoriScrollAmount);
+    const scrollY = useSelector(selectVertScrollAmount);
+
+    const onPointerDown = useCallback(
+        (event: FederatedPointerEvent) => {
+            const clickX = event.globalX - noteGridX + scrollX;
+            const clickY = event.globalY - noteGridY + scrollY;
+            const pitch = maxPitch - clickY / laneHeight;
+            const onset = clickX / beatWidth;
+            console.log("NOTE CREATE NOW!");
+            dispatch(addNote({ pitch, onset, duration: 1 }));
+        },
+        [
+            dispatch,
+            maxPitch,
+            laneHeight,
+            beatWidth,
+            noteGridX,
+            noteGridY,
+            scrollX,
+            scrollY,
+        ]
+    );
+
     return (
-        <>
+        <pixiContainer onPointerDown={onPointerDown} eventMode="static">
             <KeyLanes />
             <BeatMarkers />
             <OctaveMarkers />
             <MeasureMarkers />
-        </>
+        </pixiContainer>
     );
 }

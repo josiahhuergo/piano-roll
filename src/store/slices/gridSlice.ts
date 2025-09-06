@@ -6,6 +6,7 @@ export interface GridState {
     laneHeight: number;
     beatWidth: number;
     beatCount: number;
+    snap: number;
 }
 
 const initialState: GridState = {
@@ -13,7 +14,8 @@ const initialState: GridState = {
     minPitch: 21,
     laneHeight: 19,
     beatWidth: 80,
-    beatCount: 40,
+    beatCount: 50,
+    snap: 0.5,
 };
 
 export const gridSlice = createSlice({

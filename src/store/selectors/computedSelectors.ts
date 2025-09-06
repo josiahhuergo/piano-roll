@@ -101,6 +101,18 @@ export const selectMeterBarDimensions = createSelector(
     }
 );
 
+export const selectMaxVertScroll = createSelector(
+    [selectTotalHeight, selectNoteGridDimensions],
+    (totalHeight, noteGridDimensions) =>
+        totalHeight - noteGridDimensions.noteGridHeight
+);
+
+export const selectMaxHoriScroll = createSelector(
+    [selectTotalWidth, selectNoteGridDimensions],
+    (totalWidth, noteGridDimensions) =>
+        totalWidth - noteGridDimensions.noteGridWidth
+);
+
 export const selectVertScrollBarDimensions = createSelector(
     [
         selectCanvasSize,
@@ -108,13 +120,15 @@ export const selectVertScrollBarDimensions = createSelector(
         selectVertScrollAmount,
         selectTotalHeight,
         selectNoteGridDimensions,
+        selectMaxVertScroll,
     ],
     (
         canvasSize,
         scrollBarThickness,
         vertScrollAmount,
         totalHeight,
-        noteGridDimensions
+        noteGridDimensions,
+        maxVertScroll
     ) => {
         const noteGridHeight = noteGridDimensions.noteGridHeight;
         const vertScrollBarHeight = remap(
@@ -129,7 +143,7 @@ export const selectVertScrollBarDimensions = createSelector(
             vertScrollBarY: remap(
                 vertScrollAmount,
                 0,
-                totalHeight - noteGridHeight,
+                maxVertScroll,
                 0,
                 noteGridHeight - vertScrollBarHeight
             ),
@@ -144,7 +158,7 @@ export const selectHoriScrollBarDimensions = createSelector(
         selectCanvasSize,
         selectScrollBarThickness,
         selectHoriScrollAmount,
-        selectTotalHeight,
+        selectTotalWidth,
         selectNoteGridDimensions,
     ],
     (

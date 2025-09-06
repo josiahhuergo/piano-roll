@@ -20,12 +20,9 @@ export const notesSlice = createSlice({
     initialState,
     reducers: {
         addNote: (state, action: PayloadAction<Omit<Note, "id">>) => {
-            const { pitch, onset, duration } = action.payload;
+            const { pitch, onset } = action.payload;
             const isDuplicate = Object.values(state.byId).some(
-                (note) =>
-                    note.pitch === pitch &&
-                    note.onset === onset &&
-                    note.duration === duration
+                (note) => note.pitch === pitch && note.onset === onset
             );
 
             if (isDuplicate) return;
@@ -45,8 +42,8 @@ export const notesSlice = createSlice({
                 state.byId[id] = { ...state.byId[id], ...changes };
             }
         },
-        deleteNote: (state, action: PayloadAction<string>) => {
-            const id = action.payload;
+        deleteNote: (state, action: PayloadAction<{ id: string }>) => {
+            const { id } = action.payload;
             delete state.byId[id];
             state.allIds = state.allIds.filter((noteId) => noteId !== id);
             state.selected = state.selected.filter((noteId) => noteId !== id);

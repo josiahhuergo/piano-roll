@@ -11,6 +11,7 @@ export const selectBeatWidth = (state: { grid: GridState }) =>
     state.grid.beatWidth;
 export const selectBeatCount = (state: { grid: GridState }) =>
     state.grid.beatCount;
+export const selectSnap = (state: { grid: GridState }) => state.grid.snap;
 
 export const selectLaneCount = createSelector(
     [selectMaxPitch, selectMinPitch],

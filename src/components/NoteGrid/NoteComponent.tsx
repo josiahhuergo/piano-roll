@@ -1,103 +1,42 @@
-import type { FederatedPointerEvent, Graphics } from "pixi.js";
-import { useCallback, useEffect, useRef } from "react";
-import { useApplication } from "@pixi/react";
+import type { Container, FederatedPointerEvent, Graphics } from "pixi.js";
 import type { Note } from "../../types";
-import { useDispatch, useSelector } from "react-redux";
-import {
-    clearSelection,
-    deselectNote,
-    selectNote,
-    updateNote,
-} from "../../store";
+import { useCallback } from "react";
+import { useSelector } from "react-redux";
 import {
     selectBeatWidth,
-    selectIsDragging,
     selectIsNoteSelected,
-    selectIsShiftDown,
     selectLaneHeight,
     selectMaxPitch,
-    selectMinPitch,
-    selectMouseDownPos,
-    selectSelectedNotes,
 } from "../../store/selectors";
-import { clamp } from "../../helpers";
 
-const useNoteInteraction = (note: Note) => {
-    const app = useApplication();
-    const stage = app.app.stage;
+interface NoteComponentProps {
+    note: Note;
+    onStartDrag: (note: Note, event: FederatedPointerEvent) => void;
+    onSelect: (note: Note, isShiftDown: boolean) => void;
+    registerGraphics: (noteId: string, graphics: Graphics | null) => void;
+    registerContainer: (noteId: string, container: Container | null) => void;
+}
 
-    const dispatch = useDispatch();
-
-    const mouseDownPos = useSelector(selectMouseDownPos);
-    const isDragging = useSelector(selectIsDragging);
-    const isShiftDown = useSelector(selectIsShiftDown);
-
+export default function NoteComponent({
+    note,
+    onStartDrag,
+    onSelect,
+    registerGraphics,
+    registerContainer,
+}: NoteComponentProps) {
     const beatWidth = useSelector(selectBeatWidth);
     const laneHeight = useSelector(selectLaneHeight);
-    const minPitch = useSelector(selectMinPitch);
     const maxPitch = useSelector(selectMaxPitch);
-
     const isNoteSelected = useSelector(selectIsNoteSelected(note.id));
-    const selectedNotes = useSelector(selectSelectedNotes);
 
-    const onPointerMove = useCallback(
+    const handlePointerDown = useCallback(
         (event: FederatedPointerEvent) => {
-            if (!isDragging) return;
+            onSelect(note, event.shiftKey);
 
-            const deltaOnset = (event.globalX - mouseDownPos.x) / beatWidth;
-            const deltaPitch = (event.globalY - mouseDownPos.y) / laneHeight;
-
-            selectedNotes.forEach((note) => {
-                const newPitch = clamp(
-                    note.pitch - deltaPitch,
-                    minPitch,
-                    maxPitch
-                );
-                const newOnset = Math.max(0, note.onset + deltaOnset);
-
-                dispatch(
-                    updateNote({
-                        id: note.id,
-                        changes: { pitch: newPitch, onset: newOnset },
-                    })
-                );
-            });
+            onStartDrag(note, event);
         },
-        [dispatch, beatWidth, laneHeight, isDragging, minPitch, maxPitch]
+        [note, onSelect, onStartDrag]
     );
-
-    const onPointerUp = useCallback(() => {
-        stage.off("pointermove", onPointerMove);
-        stage.off("pointerup", onPointerUp);
-        stage.off("pointerupoutside", onPointerUp);
-    }, [stage, onPointerMove]);
-
-    const onPointerDown = useCallback(() => {
-        if (isShiftDown && isNoteSelected) {
-            dispatch(deselectNote({ id: note.id }));
-        }
-        if (isShiftDown && !isNoteSelected)
-            dispatch(selectNote({ id: note.id }));
-        if (!isShiftDown && !isNoteSelected) {
-            dispatch(clearSelection());
-            dispatch(selectNote({ id: note.id }));
-        }
-
-        stage.on("pointermove", onPointerMove);
-        stage.on("pointerup", onPointerUp);
-        stage.on("pointerupoutside", onPointerUp);
-    }, [dispatch, isShiftDown, stage, note, onPointerMove, onPointerUp]);
-
-    return onPointerDown;
-};
-
-export default function NoteComponent({ note }: { note: Note }) {
-    const onPointerDown = useNoteInteraction(note);
-
-    const beatWidth = useSelector(selectBeatWidth);
-    const laneHeight = useSelector(selectLaneHeight);
-    const maxPitch = useSelector(selectMaxPitch);
-    const isNoteSelected = useSelector(selectIsNoteSelected(note.id));
 
     const draw = useCallback(
         (graphics: Graphics) => {
@@ -106,13 +45,28 @@ export default function NoteComponent({ note }: { note: Note }) {
             graphics
                 .rect(0, 0, note.duration * beatWidth, laneHeight)
                 .fill(0x666666);
+
             if (isNoteSelected) {
-                graphics.stroke("0xffffff");
+                graphics.stroke({ width: 1, color: 0xffffff });
             } else {
-                graphics.stroke("0x000000");
+                graphics.stroke({ width: 1, color: 0x000000 });
             }
         },
-        [note, beatWidth, laneHeight, maxPitch, isNoteSelected]
+        [note, beatWidth, laneHeight, isNoteSelected]
+    );
+
+    const containerRef = useCallback(
+        (container: Container | null) => {
+            registerContainer(note.id, container);
+        },
+        [note, registerContainer]
+    );
+
+    const graphicsRef = useCallback(
+        (graphics: Graphics | null) => {
+            registerGraphics(note.id, graphics);
+        },
+        [note, registerGraphics]
     );
 
     const zIndex = isNoteSelected ? 1 : 0;
@@ -121,10 +75,13 @@ export default function NoteComponent({ note }: { note: Note }) {
         <pixiContainer
             x={note.onset * beatWidth}
             y={(maxPitch - note.pitch) * laneHeight}
+            ref={containerRef}
         >
             <pixiGraphics
+                ref={graphicsRef}
                 draw={draw}
-                onPointerDown={onPointerDown}
+                eventMode="static"
+                onPointerDown={handlePointerDown}
                 zIndex={zIndex}
             />
         </pixiContainer>

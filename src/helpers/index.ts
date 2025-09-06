@@ -28,3 +28,7 @@ export function remap(
 ): number {
     return ((value - fromMin) / (fromMax - fromMin)) * (toMax - toMin) + toMin;
 }
+
+export function snap(value: number, snapValue: number): number {
+    return Math.round(value / snapValue) * snapValue;
+}

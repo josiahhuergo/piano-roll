@@ -1,9 +1,10 @@
 import type { FederatedPointerEvent, Graphics } from "pixi.js";
-import { remap } from "../../helpers";
+import { clamp, remap } from "../../helpers";
 import { useApplication } from "@pixi/react";
 import { useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
+    selectMaxVertScroll,
     selectMeterBarHeight,
     selectNoteGridDimensions,
     selectScrollBarThickness,
@@ -56,20 +57,24 @@ function Bar() {
     const isDragging = useRef(false);
     const clickVertScrollAmt = useRef(0);
     const clickMouseY = useRef(0);
+    const maxVertScroll = useSelector(selectMaxVertScroll);
 
     const onPointerMove = useCallback(
         (event: FederatedPointerEvent) => {
             if (!isDragging.current) return;
 
-            const scrollAmount =
+            const scrollAmount = clamp(
                 clickVertScrollAmt.current +
-                remap(
-                    event.globalY - clickMouseY.current,
-                    0,
-                    noteGridHeight - vertScrollBarHeight,
-                    0,
-                    totalHeight - noteGridHeight
-                );
+                    remap(
+                        event.globalY - clickMouseY.current,
+                        0,
+                        noteGridHeight - vertScrollBarHeight,
+                        0,
+                        totalHeight - noteGridHeight
+                    ),
+                0,
+                maxVertScroll
+            );
 
             dispatch(setVertScroll({ scrollAmount }));
         },

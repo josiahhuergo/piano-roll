@@ -1,15 +1,8 @@
 import { Application } from "@pixi/react";
 import { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { selectCanvasSize } from "../store/selectors";
-import {
-    addNote,
-    pressCtrl,
-    pressShift,
-    releaseCtrl,
-    releaseShift,
-    updateCanvasSize,
-} from "../store";
+import { selectCanvasSize, selectSelectedNotes } from "../store/selectors";
+import { addNote, deleteNote, updateCanvasSize } from "../store";
 import { useWindowEvent } from "../hooks";
 import PianoRoll from "./PianoRoll";
 
@@ -31,42 +24,18 @@ export default function App() {
         dispatch(updateCanvasSize());
     }, [dispatch]);
 
+    const selectedNotes = useSelector(selectSelectedNotes);
+
     useWindowEvent(
         "keydown",
         (event: KeyboardEvent) => {
-            switch (event.key) {
-                case "Delete":
-                    // dispatch(deleteSelectedNotes());
-                    break;
-                case "Shift":
-                    event.preventDefault();
-                    dispatch(pressShift());
-                    break;
-                case "Control":
-                    event.preventDefault();
-                    dispatch(pressCtrl());
-                    break;
-                case "Alt":
-                    event.preventDefault();
-                    break;
+            if (event.key == "Delete") {
+                selectedNotes.forEach((note) => {
+                    dispatch(deleteNote({ id: note.id }));
+                });
             }
         },
-        [dispatch]
-    );
-
-    useWindowEvent(
-        "keyup",
-        (event: KeyboardEvent) => {
-            switch (event.key) {
-                case "Shift":
-                    dispatch(releaseShift());
-                    break;
-                case "Control":
-                    dispatch(releaseCtrl());
-                    break;
-            }
-        },
-        [dispatch]
+        [dispatch, selectedNotes]
     );
 
     useWindowEvent(
