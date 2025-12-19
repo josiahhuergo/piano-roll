@@ -2,12 +2,14 @@ import { configureStore } from "@reduxjs/toolkit";
 import { notesSlice } from "./slices/notesSlice";
 import { viewportSlice } from "./slices/viewportSlice";
 import { gridSlice } from "./slices/gridSlice";
+import { transportSlice } from "./slices/transportSlice";
 
 export const store = configureStore({
     reducer: {
         viewport: viewportSlice.reducer,
         grid: gridSlice.reducer,
         notes: notesSlice.reducer,
+        transport: transportSlice.reducer,
     },
 });
 
@@ -30,3 +32,5 @@ export const {
     deselectNote,
     clearSelection,
 } = notesSlice.actions;
+
+export const { setStartTimeBeats } = transportSlice.actions;

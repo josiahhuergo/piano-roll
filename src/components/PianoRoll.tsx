@@ -16,6 +16,7 @@ import {
 import { useCallback } from "react";
 import { setHoriScroll, setVertScroll } from "../store";
 import { clamp } from "../helpers";
+import Playhead from "./Playhead";
 
 extend({ Container, Graphics, Text });
 
@@ -78,6 +79,7 @@ export default function PianoRoll() {
             <MeterBar />
             <PianoBar />
             <NoteGrid />
+            <Playhead />
             <VertScrollBar />
             <HoriScrollBar />
         </pixiContainer>

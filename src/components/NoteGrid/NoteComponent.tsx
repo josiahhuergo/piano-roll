@@ -1,6 +1,6 @@
-import type { Container, FederatedPointerEvent, Graphics } from "pixi.js";
+import { Graphics, type Container, type FederatedPointerEvent } from "pixi.js";
 import type { Note } from "../../types";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useSelector } from "react-redux";
 import {
     selectBeatWidth,
@@ -9,9 +9,61 @@ import {
     selectMaxPitch,
 } from "../../store/selectors";
 
+function DragHandle({
+    note,
+    onStartDragDur,
+    onSelect,
+}: {
+    note: Note;
+    onStartDragDur: (event: FederatedPointerEvent) => void;
+    onSelect: (note: Note, isShiftDown: boolean) => void;
+}) {
+    const laneHeight = useSelector(selectLaneHeight);
+    const beatWidth = useSelector(selectBeatWidth);
+    const dragSize = useRef(10);
+    const ref = useRef(new Graphics());
+
+    const x = note.duration * beatWidth - dragSize.current / 2;
+
+    const draw = useCallback(
+        (graphics: Graphics) => {
+            graphics.rect(0, 0, dragSize.current, laneHeight).fill("white");
+            graphics.alpha = 0;
+        },
+        [laneHeight]
+    );
+
+    const handlePointerDown = useCallback(
+        (event: FederatedPointerEvent) => {
+            onSelect(note, event.shiftKey);
+            onStartDragDur(event);
+
+            event.stopPropagation();
+        },
+        [note]
+    );
+
+    const onPointerOver = useCallback((event: FederatedPointerEvent) => {
+        ref.current.cursor = "ew-resize";
+    }, []);
+
+    return (
+        <pixiContainer x={x}>
+            <pixiGraphics
+                ref={ref}
+                draw={draw}
+                onPointerDown={handlePointerDown}
+                onPointerOver={onPointerOver}
+                eventMode="dynamic"
+            />
+        </pixiContainer>
+    );
+}
+
 interface NoteComponentProps {
     note: Note;
-    onStartDrag: (note: Note, event: FederatedPointerEvent) => void;
+    onStartDragPos: (note: Note, event: FederatedPointerEvent) => void;
+    onStartDragDur: (event: FederatedPointerEvent) => void;
     onSelect: (note: Note, isShiftDown: boolean) => void;
     registerGraphics: (noteId: string, graphics: Graphics | null) => void;
     registerContainer: (noteId: string, container: Container | null) => void;
@@ -19,7 +71,8 @@ interface NoteComponentProps {
 
 export default function NoteComponent({
     note,
-    onStartDrag,
+    onStartDragPos,
+    onStartDragDur,
     onSelect,
     registerGraphics,
     registerContainer,
@@ -29,13 +82,13 @@ export default function NoteComponent({
     const maxPitch = useSelector(selectMaxPitch);
     const isNoteSelected = useSelector(selectIsNoteSelected(note.id));
 
-    const handlePointerDown = useCallback(
+    const handleNoteMove = useCallback(
         (event: FederatedPointerEvent) => {
             onSelect(note, event.shiftKey);
 
-            onStartDrag(note, event);
+            onStartDragPos(note, event);
         },
-        [note, onSelect, onStartDrag]
+        [note, onSelect, onStartDragPos]
     );
 
     const draw = useCallback(
@@ -69,8 +122,6 @@ export default function NoteComponent({
         [note, registerGraphics]
     );
 
-    const zIndex = isNoteSelected ? 1 : 0;
-
     return (
         <pixiContainer
             x={note.onset * beatWidth}
@@ -81,8 +132,12 @@ export default function NoteComponent({
                 ref={graphicsRef}
                 draw={draw}
                 eventMode="static"
-                onPointerDown={handlePointerDown}
-                zIndex={zIndex}
+                onPointerDown={handleNoteMove}
+            />
+            <DragHandle
+                note={note}
+                onStartDragDur={onStartDragDur}
+                onSelect={onSelect}
             />
         </pixiContainer>
     );

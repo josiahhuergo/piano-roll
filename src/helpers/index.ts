@@ -29,6 +29,10 @@ export function remap(
     return ((value - fromMin) / (fromMax - fromMin)) * (toMax - toMin) + toMin;
 }
 
-export function snap(value: number, snapValue: number): number {
+export function snapRound(value: number, snapValue: number): number {
     return Math.round(value / snapValue) * snapValue;
+}
+
+export function snapFloor(value: number, snapValue: number): number {
+    return Math.floor(value / snapValue) * snapValue;
 }

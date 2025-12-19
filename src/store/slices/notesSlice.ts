@@ -31,6 +31,7 @@ export const notesSlice = createSlice({
             const note: Note = { ...action.payload, id };
             state.byId[id] = note;
             state.allIds.push(id);
+            state.selected.push(id);
             state.nextId++;
         },
         updateNote: (

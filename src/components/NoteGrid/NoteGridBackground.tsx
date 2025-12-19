@@ -8,13 +8,15 @@ import {
     selectLaneHeight,
     selectMaxPitch,
     selectNoteGridDimensions,
+    selectSnap,
     selectTotalHeight,
     selectTotalWidth,
     selectVertScrollAmount,
 } from "../../store/selectors";
 import type { FederatedPointerEvent, Graphics } from "pixi.js";
-import { pitchIsBlackKey } from "../../helpers";
-import { addNote, clearSelection } from "../../store";
+import { pitchIsBlackKey, snapFloor, snapRound } from "../../helpers";
+import { addNote, clearSelection, setStartTimeBeats } from "../../store";
+import { useDoubleClick } from "../../hooks";
 
 function KeyLanes() {
     const dispatch = useDispatch();
@@ -125,20 +127,24 @@ function MeasureMarkers() {
 
 export default function NoteGridBackground() {
     const dispatch = useDispatch();
+
     const laneHeight = useSelector(selectLaneHeight);
     const beatWidth = useSelector(selectBeatWidth);
     const maxPitch = useSelector(selectMaxPitch);
+
     const { noteGridX, noteGridY } = useSelector(selectNoteGridDimensions);
     const scrollX = useSelector(selectHoriScrollAmount);
     const scrollY = useSelector(selectVertScrollAmount);
 
-    const onPointerDown = useCallback(
+    const snapAmt = useSelector(selectSnap);
+
+    const onDoubleClick = useCallback(
         (event: FederatedPointerEvent) => {
             const clickX = event.globalX - noteGridX + scrollX;
             const clickY = event.globalY - noteGridY + scrollY;
-            const pitch = maxPitch - clickY / laneHeight;
-            const onset = clickX / beatWidth;
-            console.log("NOTE CREATE NOW!");
+            const pitch = Math.floor(maxPitch - clickY / laneHeight) + 1;
+            const onset = snapFloor(clickX / beatWidth, snapAmt);
+
             dispatch(addNote({ pitch, onset, duration: 1 }));
         },
         [
@@ -152,6 +158,16 @@ export default function NoteGridBackground() {
             scrollY,
         ]
     );
+
+    const onSingleClick = (event: FederatedPointerEvent) => {
+        dispatch(clearSelection());
+
+        const clickX = event.globalX - noteGridX + scrollX;
+        const newStartTimeBeats = snapRound(clickX / beatWidth, snapAmt);
+        dispatch(setStartTimeBeats(newStartTimeBeats));
+    };
+
+    const onPointerDown = useDoubleClick(onSingleClick, onDoubleClick);
 
     return (
         <pixiContainer onPointerDown={onPointerDown} eventMode="static">

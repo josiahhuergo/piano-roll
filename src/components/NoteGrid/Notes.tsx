@@ -6,14 +6,15 @@ import {
     selectLaneHeight,
     selectMaxPitch,
     selectMinPitch,
-    selectSelectedNotes,
+    selectSnap,
 } from "../../store/selectors";
 import { useCallback, useEffect, useRef } from "react";
 import type { Note } from "../../types";
 import type { Container, FederatedPointerEvent, Graphics } from "pixi.js";
-import { clamp } from "../../helpers";
+import { clamp, snapRound } from "../../helpers";
 import {
     clearSelection,
+    deleteNote,
     deselectNote,
     selectNote,
     updateNote,
@@ -30,7 +31,7 @@ function useNoteInteraction() {
     const laneHeight = useSelector(selectLaneHeight);
     const minPitch = useSelector(selectMinPitch);
     const maxPitch = useSelector(selectMaxPitch);
-    const selectedNotes = useSelector(selectSelectedNotes);
+    const snapAmt = useSelector(selectSnap);
 
     const dragStateRef = useRef({
         isDragging: false,
@@ -38,7 +39,7 @@ function useNoteInteraction() {
         initialMousePos: { x: 0, y: 0 },
         initialNotePositions: new Map<
             string,
-            { pitch: number; onset: number }
+            { pitch: number; onset: number; duration: number }
         >(),
         currentNotes: new Map<string, Note>(),
     });
@@ -51,6 +52,65 @@ function useNoteInteraction() {
 
     const noteGraphicsRefs = useRef<Map<string, Graphics>>(new Map());
     const noteContainerRefs = useRef<Map<string, Container>>(new Map());
+
+    const resolveNoteCollisions = useCallback((movedNoteIds: Set<string>) => {
+        const dragState = dragStateRef.current;
+        const updates: Array<{ id: string; changes: Partial<Note> }> = [];
+        const deletions: Array<string> = [];
+
+        const movedNotes = Array.from(movedNoteIds)
+            .map((id) => dragState.currentNotes.get(id))
+            .filter(Boolean) as Note[];
+
+        const unselectedNotes = Array.from(
+            dragState.currentNotes.values()
+        ).filter((note) => !movedNoteIds.has(note.id));
+
+        movedNotes.forEach((movedNote) => {
+            unselectedNotes.forEach((unselectedNote) => {
+                if (movedNote.pitch === unselectedNote.pitch) {
+                    const movedNoteEnd = movedNote.onset + movedNote.duration;
+                    const unselectedNoteEnd =
+                        unselectedNote.onset + unselectedNote.duration;
+
+                    if (
+                        movedNote.onset > unselectedNote.onset &&
+                        movedNote.onset < unselectedNoteEnd
+                    ) {
+                        const newDuration =
+                            movedNote.onset - unselectedNote.onset;
+                        if (newDuration > 0) {
+                            updates.push({
+                                id: unselectedNote.id,
+                                changes: { duration: newDuration },
+                            });
+
+                            const cachedNote = dragState.currentNotes.get(
+                                unselectedNote.id
+                            );
+                            if (cachedNote) {
+                                dragState.currentNotes.set(unselectedNote.id, {
+                                    ...cachedNote,
+                                    duration: newDuration,
+                                });
+                            }
+                        } else {
+                            deletions.push(unselectedNote.id);
+                        }
+                    }
+
+                    if (
+                        unselectedNote.onset >= movedNote.onset &&
+                        unselectedNote.onset < movedNoteEnd
+                    ) {
+                        deletions.push(unselectedNote.id);
+                    }
+                }
+            });
+        });
+
+        return { updates, deletions };
+    }, []);
 
     const redrawDraggedNotes = useCallback(() => {
         const dragState = dragStateRef.current;
@@ -77,51 +137,6 @@ function useNoteInteraction() {
         });
     }, [beatWidth, laneHeight]);
 
-    const handlePointerMove = useCallback(
-        (event: FederatedPointerEvent) => {
-            const dragState = dragStateRef.current;
-            if (!dragState.isDragging) return;
-
-            const deltaX = event.globalX - dragState.initialMousePos.x;
-            const deltaY = event.globalY - dragState.initialMousePos.y;
-            const deltaOnset = deltaX / beatWidth;
-            const deltaPitch = deltaY / laneHeight;
-
-            // Update positions in cache and move containers
-            dragState.draggedNoteIds.forEach((noteId) => {
-                const initialPos = dragState.initialNotePositions.get(noteId);
-                const noteContainer = noteContainerRefs.current.get(noteId);
-                if (!initialPos || !noteContainer) return;
-
-                const newPitch = Math.round(
-                    clamp(initialPos.pitch - deltaPitch, minPitch, maxPitch)
-                );
-                const newOnset = Math.round(
-                    Math.max(0, initialPos.onset + deltaOnset)
-                );
-
-                // Update cached note data
-                let cachedNote = dragState.currentNotes.get(noteId);
-                if (cachedNote) {
-                    const newNote = {
-                        ...cachedNote,
-                        pitch: newPitch,
-                        onset: newOnset,
-                    };
-                    dragState.currentNotes.set(noteId, newNote);
-                }
-
-                // Move container directly (no React re-render)
-                noteContainer.x = newOnset * beatWidth;
-                noteContainer.y = (maxPitch - newPitch) * laneHeight;
-            });
-
-            // Optional: Manually redraw if needed
-            redrawDraggedNotes();
-        },
-        [beatWidth, laneHeight, minPitch, maxPitch]
-    );
-
     const registerNoteGraphics = useCallback(
         (noteId: string, graphics: Graphics | null) => {
             if (graphics) {
@@ -144,8 +159,63 @@ function useNoteInteraction() {
         []
     );
 
-    const handlePointerUp = useCallback(() => {
+    const handlePointerMovePos = useCallback(
+        (event: FederatedPointerEvent) => {
+            const dragState = dragStateRef.current;
+            if (!dragState.isDragging) return;
+
+            const deltaX = event.globalX - dragState.initialMousePos.x;
+            const deltaY = event.globalY - dragState.initialMousePos.y;
+            const deltaOnset = deltaX / beatWidth;
+            const deltaPitch = deltaY / laneHeight;
+
+            // Update positions in cache and move containers
+            dragState.draggedNoteIds.forEach((noteId) => {
+                const initialPos = dragState.initialNotePositions.get(noteId);
+                const noteContainer = noteContainerRefs.current.get(noteId);
+                if (!initialPos || !noteContainer) return;
+
+                const newPitch = Math.round(
+                    clamp(initialPos.pitch - deltaPitch, minPitch, maxPitch)
+                );
+                const newOnset = snapRound(
+                    Math.max(0, initialPos.onset + deltaOnset),
+                    snapAmt
+                );
+
+                // Update cached note data
+                let cachedNote = dragState.currentNotes.get(noteId);
+                if (cachedNote) {
+                    const newNote = {
+                        ...cachedNote,
+                        pitch: newPitch,
+                        onset: newOnset,
+                    };
+                    dragState.currentNotes.set(noteId, newNote);
+                }
+
+                // Move container directly (no React re-render)
+                noteContainer.x = newOnset * beatWidth;
+                noteContainer.y = (maxPitch - newPitch) * laneHeight;
+            });
+        },
+        [beatWidth, laneHeight, minPitch, maxPitch]
+    );
+
+    const handlePointerUpPos = useCallback(() => {
         const dragState = dragStateRef.current;
+
+        const { updates, deletions } = resolveNoteCollisions(
+            dragState.draggedNoteIds
+        );
+
+        updates.forEach((update) => {
+            dispatch(updateNote(update));
+        });
+
+        deletions.forEach((noteId) => {
+            dispatch(deleteNote({ id: noteId }));
+        });
 
         dragState.draggedNoteIds.forEach((noteId) => {
             const note = dragState.currentNotes.get(noteId)!;
@@ -159,20 +229,24 @@ function useNoteInteraction() {
         });
 
         dragState.isDragging = false;
-        dragState.draggedNoteIds.clear();
         dragState.initialNotePositions.clear();
 
-        stage.off("pointermove", handlePointerMove);
-        stage.off("pointerup", handlePointerUp);
-        stage.off("pointerupoutside", handlePointerUp);
-    }, [stage, handlePointerMove]);
+        stage.off("pointermove", handlePointerMovePos);
+        stage.off("pointerup", handlePointerUpPos);
+        stage.off("pointerupoutside", handlePointerUpPos);
+    }, [stage, handlePointerMovePos]);
 
-    const startDrag = useCallback(
+    const startDragPos = useCallback(
         (targetNote: Note, event: FederatedPointerEvent) => {
-            const isTargetSelected = selectedNotes.some(
-                (n) => n.id === targetNote.id
-            );
-            const notesToDrag = isTargetSelected ? selectedNotes : [targetNote];
+            const isTargetSelected = Array.from(
+                dragStateRef.current.draggedNoteIds
+            ).some((id) => id === targetNote.id);
+
+            const selected = Array.from(
+                dragStateRef.current.draggedNoteIds
+            ).map((id) => dragStateRef.current.currentNotes.get(id)!);
+
+            const notesToDrag = isTargetSelected ? selected : [targetNote];
 
             dragStateRef.current = {
                 isDragging: true,
@@ -181,40 +255,135 @@ function useNoteInteraction() {
                 initialNotePositions: new Map(
                     notesToDrag.map((n) => [
                         n.id,
-                        { pitch: n.pitch, onset: n.onset },
+                        {
+                            pitch: n.pitch,
+                            onset: n.onset,
+                            duration: n.duration,
+                        },
                     ])
                 ),
                 currentNotes: dragStateRef.current.currentNotes,
             };
 
-            stage.on("pointermove", handlePointerMove);
-            stage.on("pointerup", handlePointerUp);
-            stage.on("pointerupoutside", handlePointerUp);
+            stage.on("pointermove", handlePointerMovePos);
+            stage.on("pointerup", handlePointerUpPos);
+            stage.on("pointerupoutside", handlePointerUpPos);
         },
-        [selectedNotes, stage, handlePointerMove, handlePointerUp]
+        [stage, handlePointerMovePos, handlePointerUpPos]
+    );
+
+    const handlePointerMoveDur = useCallback((event: FederatedPointerEvent) => {
+        const dragState = dragStateRef.current;
+        if (!dragState.isDragging) return;
+
+        const deltaX = event.globalX - dragState.initialMousePos.x;
+        const deltaDuration = snapRound(deltaX / beatWidth, snapAmt);
+
+        // Update positions in cache and move containers
+        dragState.draggedNoteIds.forEach((noteId) => {
+            const initialPos = dragState.initialNotePositions.get(noteId);
+            if (!initialPos) return;
+
+            const newDuration = Math.max(
+                snapAmt,
+                initialPos.duration + deltaDuration
+            );
+
+            // Update cached note data
+            let cachedNote = dragState.currentNotes.get(noteId);
+            if (cachedNote) {
+                const newNote = {
+                    ...cachedNote,
+                    duration: newDuration,
+                };
+                dragState.currentNotes.set(noteId, newNote);
+            }
+        });
+
+        // Optional: Manually redraw if needed
+        redrawDraggedNotes();
+    }, []);
+
+    const handlePointerUpDur = useCallback(() => {
+        const dragState = dragStateRef.current;
+
+        dragState.draggedNoteIds.forEach((noteId) => {
+            const note = dragState.currentNotes.get(noteId)!;
+
+            dispatch(
+                updateNote({
+                    id: note.id,
+                    changes: { duration: note.duration },
+                })
+            );
+        });
+
+        dragState.isDragging = false;
+        dragState.initialNotePositions.clear();
+
+        stage.off("pointermove", handlePointerMoveDur);
+        stage.off("pointerup", handlePointerUpDur);
+        stage.off("pointerupoutside", handlePointerUpDur);
+    }, [stage]);
+
+    const startDragDur = useCallback(
+        (event: FederatedPointerEvent) => {
+            const selected = Array.from(
+                dragStateRef.current.draggedNoteIds
+            ).map((id) => dragStateRef.current.currentNotes.get(id)!);
+
+            dragStateRef.current = {
+                isDragging: true,
+                draggedNoteIds: dragStateRef.current.draggedNoteIds,
+                initialMousePos: { x: event.globalX, y: event.globalY },
+                initialNotePositions: new Map(
+                    selected.map((n) => [
+                        n.id,
+                        {
+                            pitch: n.pitch,
+                            onset: n.onset,
+                            duration: n.duration,
+                        },
+                    ])
+                ),
+                currentNotes: dragStateRef.current.currentNotes,
+            };
+
+            stage.on("pointermove", handlePointerMoveDur);
+            stage.on("pointerup", handlePointerUpDur);
+            stage.on("pointerupoutside", handlePointerUpDur);
+        },
+        [stage, handlePointerMoveDur, handlePointerUpDur]
     );
 
     const handleNoteSelect = useCallback(
         (targetNote: Note, isShiftDown: boolean) => {
-            const isTargetSelected = selectedNotes.some(
-                (n) => n.id === targetNote.id
-            );
+            const dragState = dragStateRef.current;
+
+            const isTargetSelected = Array.from(
+                dragStateRef.current.draggedNoteIds
+            ).some((id) => id === targetNote.id);
 
             if (isShiftDown && isTargetSelected) {
+                dragState.draggedNoteIds.delete(targetNote.id);
                 dispatch(deselectNote({ id: targetNote.id }));
             } else if (isShiftDown && !isTargetSelected) {
+                dragState.draggedNoteIds.add(targetNote.id);
                 dispatch(selectNote({ id: targetNote.id }));
             } else if (!isShiftDown && !isTargetSelected) {
+                dragState.draggedNoteIds.clear();
+                dragState.draggedNoteIds.add(targetNote.id);
                 dispatch(clearSelection());
                 dispatch(selectNote({ id: targetNote.id }));
             }
         },
-        [selectedNotes, dispatch]
+        [dispatch]
     );
 
     return {
         dragStateRef,
-        startDrag,
+        startDragPos,
+        startDragDur,
         handleNoteSelect,
         registerNoteGraphics,
         registerNoteContainer,
@@ -223,25 +392,26 @@ function useNoteInteraction() {
 
 export default function Notes() {
     const {
-        dragStateRef,
-        startDrag,
+        startDragPos,
+        startDragDur,
         handleNoteSelect,
         registerNoteGraphics,
         registerNoteContainer,
     } = useNoteInteraction();
 
-    const notes = Array.from(dragStateRef.current.currentNotes.values()).map(
-        (note) => (
-            <NoteComponent
-                key={note.id}
-                note={note}
-                onStartDrag={startDrag}
-                onSelect={handleNoteSelect}
-                registerGraphics={registerNoteGraphics}
-                registerContainer={registerNoteContainer}
-            />
-        )
-    );
+    const allNotes = useSelector(selectAllNotes);
+
+    const notes = allNotes.map((note) => (
+        <NoteComponent
+            key={note.id}
+            note={note}
+            onStartDragPos={startDragPos}
+            onStartDragDur={startDragDur}
+            onSelect={handleNoteSelect}
+            registerGraphics={registerNoteGraphics}
+            registerContainer={registerNoteContainer}
+        />
+    ));
 
     return <>{notes}</>;
 }

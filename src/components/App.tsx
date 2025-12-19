@@ -1,10 +1,16 @@
 import { Application } from "@pixi/react";
 import { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { selectCanvasSize, selectSelectedNotes } from "../store/selectors";
-import { addNote, deleteNote, updateCanvasSize } from "../store";
+import {
+    selectAllNotes,
+    selectCanvasSize,
+    selectSelectedNotes,
+} from "../store/selectors";
+import { deleteNote, updateCanvasSize } from "../store";
 import { useWindowEvent } from "../hooks";
 import PianoRoll from "./PianoRoll";
+import { Synth } from "../services/synth";
+import { selectStartTimeBeats } from "../store/selectors/transportSelectors";
 
 export default function App() {
     const canvasSize = useSelector(selectCanvasSize);
@@ -12,19 +18,26 @@ export default function App() {
 
     const parentDiv = useRef(null);
 
-    useEffect(() => {
-        // Adding notes for testing purposes
-        dispatch(addNote({ pitch: 60, onset: 0, duration: 4 }));
-        dispatch(addNote({ pitch: 64, onset: 1, duration: 3 }));
-        dispatch(addNote({ pitch: 67, onset: 2, duration: 6 }));
-        dispatch(addNote({ pitch: 71, onset: 3, duration: 5 }));
-        dispatch(addNote({ pitch: 74, onset: 4, duration: 1 }));
-        dispatch(addNote({ pitch: 78, onset: 5, duration: 2 }));
+    const synth = useRef(new Synth(120));
 
+    useEffect(() => {
+        window.addEventListener("click", async () => {
+            await synth.current.startSynth();
+        });
+    }, []);
+    useEffect(() => {
+        window.addEventListener("keydown", async () => {
+            await synth.current.startSynth();
+        });
+    }, []);
+
+    useEffect(() => {
         dispatch(updateCanvasSize());
     }, [dispatch]);
 
     const selectedNotes = useSelector(selectSelectedNotes);
+    const allNotes = useSelector(selectAllNotes);
+    const startTimeInBeats = useSelector(selectStartTimeBeats);
 
     useWindowEvent(
         "keydown",
@@ -33,9 +46,16 @@ export default function App() {
                 selectedNotes.forEach((note) => {
                     dispatch(deleteNote({ id: note.id }));
                 });
+            } else if (event.code == "Space") {
+                if (synth.current.playing) {
+                    synth.current.stop();
+                } else if (!synth.current.playing) {
+                    synth.current.updateNotes(allNotes);
+                    synth.current.play(startTimeInBeats);
+                }
             }
         },
-        [dispatch, selectedNotes]
+        [dispatch, selectedNotes, allNotes]
     );
 
     useWindowEvent(
