@@ -7,6 +7,7 @@ import {
     selectMaxPitch,
     selectMinPitch,
     selectSnap,
+    selectSelectedNoteIds,
 } from "../../store/selectors";
 import { useCallback, useEffect, useRef } from "react";
 import type { Note } from "../../types";
@@ -27,6 +28,7 @@ function useNoteInteraction() {
     const dispatch = useDispatch();
 
     const allNotes = useSelector(selectAllNotes);
+    const selectedNoteIds = useSelector(selectSelectedNoteIds);
     const beatWidth = useSelector(selectBeatWidth);
     const laneHeight = useSelector(selectLaneHeight);
     const minPitch = useSelector(selectMinPitch);
@@ -43,6 +45,14 @@ function useNoteInteraction() {
         >(),
         currentNotes: new Map<string, Note>(),
     });
+
+    // Sync draggedNoteIds with Redux selection when not dragging
+    useEffect(() => {
+        const dragState = dragStateRef.current;
+        if (!dragState.isDragging) {
+            dragState.draggedNoteIds = new Set(selectedNoteIds);
+        }
+    }, [selectedNoteIds]);
 
     useEffect(() => {
         const noteMap = new Map();
@@ -127,7 +137,7 @@ function useNoteInteraction() {
                 .rect(0, 0, note.duration * beatWidth, laneHeight)
                 .fill(0x666666);
 
-            // Note outline
+            // Note outline - check if selected
             const isSelected = dragState.draggedNoteIds.has(noteId);
             if (isSelected) {
                 graphics.stroke({ width: 1, color: 0xffffff });
@@ -199,7 +209,7 @@ function useNoteInteraction() {
                 noteContainer.y = (maxPitch - newPitch) * laneHeight;
             });
         },
-        [beatWidth, laneHeight, minPitch, maxPitch]
+        [beatWidth, laneHeight, minPitch, maxPitch, snapAmt]
     );
 
     const handlePointerUpPos = useCallback(() => {
@@ -234,17 +244,18 @@ function useNoteInteraction() {
         stage.off("pointermove", handlePointerMovePos);
         stage.off("pointerup", handlePointerUpPos);
         stage.off("pointerupoutside", handlePointerUpPos);
-    }, [stage, handlePointerMovePos]);
+    }, [stage, handlePointerMovePos, dispatch, resolveNoteCollisions]);
 
     const startDragPos = useCallback(
         (targetNote: Note, event: FederatedPointerEvent) => {
-            const isTargetSelected = Array.from(
-                dragStateRef.current.draggedNoteIds
-            ).some((id) => id === targetNote.id);
+            // Use current draggedNoteIds which is synced with Redux
+            const isTargetSelected = dragStateRef.current.draggedNoteIds.has(
+                targetNote.id
+            );
 
-            const selected = Array.from(
-                dragStateRef.current.draggedNoteIds
-            ).map((id) => dragStateRef.current.currentNotes.get(id)!);
+            const selected = Array.from(dragStateRef.current.draggedNoteIds)
+                .map((id) => dragStateRef.current.currentNotes.get(id)!)
+                .filter(Boolean);
 
             const notesToDrag = isTargetSelected ? selected : [targetNote];
 
@@ -272,37 +283,40 @@ function useNoteInteraction() {
         [stage, handlePointerMovePos, handlePointerUpPos]
     );
 
-    const handlePointerMoveDur = useCallback((event: FederatedPointerEvent) => {
-        const dragState = dragStateRef.current;
-        if (!dragState.isDragging) return;
+    const handlePointerMoveDur = useCallback(
+        (event: FederatedPointerEvent) => {
+            const dragState = dragStateRef.current;
+            if (!dragState.isDragging) return;
 
-        const deltaX = event.globalX - dragState.initialMousePos.x;
-        const deltaDuration = snapRound(deltaX / beatWidth, snapAmt);
+            const deltaX = event.globalX - dragState.initialMousePos.x;
+            const deltaDuration = snapRound(deltaX / beatWidth, snapAmt);
 
-        // Update positions in cache and move containers
-        dragState.draggedNoteIds.forEach((noteId) => {
-            const initialPos = dragState.initialNotePositions.get(noteId);
-            if (!initialPos) return;
+            // Update positions in cache
+            dragState.draggedNoteIds.forEach((noteId) => {
+                const initialPos = dragState.initialNotePositions.get(noteId);
+                if (!initialPos) return;
 
-            const newDuration = Math.max(
-                snapAmt,
-                initialPos.duration + deltaDuration
-            );
+                const newDuration = Math.max(
+                    snapAmt,
+                    initialPos.duration + deltaDuration
+                );
 
-            // Update cached note data
-            let cachedNote = dragState.currentNotes.get(noteId);
-            if (cachedNote) {
-                const newNote = {
-                    ...cachedNote,
-                    duration: newDuration,
-                };
-                dragState.currentNotes.set(noteId, newNote);
-            }
-        });
+                // Update cached note data
+                let cachedNote = dragState.currentNotes.get(noteId);
+                if (cachedNote) {
+                    const newNote = {
+                        ...cachedNote,
+                        duration: newDuration,
+                    };
+                    dragState.currentNotes.set(noteId, newNote);
+                }
+            });
 
-        // Optional: Manually redraw if needed
-        redrawDraggedNotes();
-    }, []);
+            // Redraw notes with new duration
+            redrawDraggedNotes();
+        },
+        [beatWidth, snapAmt, redrawDraggedNotes]
+    );
 
     const handlePointerUpDur = useCallback(() => {
         const dragState = dragStateRef.current;
@@ -324,13 +338,13 @@ function useNoteInteraction() {
         stage.off("pointermove", handlePointerMoveDur);
         stage.off("pointerup", handlePointerUpDur);
         stage.off("pointerupoutside", handlePointerUpDur);
-    }, [stage]);
+    }, [stage, handlePointerMoveDur, dispatch]);
 
     const startDragDur = useCallback(
         (event: FederatedPointerEvent) => {
-            const selected = Array.from(
-                dragStateRef.current.draggedNoteIds
-            ).map((id) => dragStateRef.current.currentNotes.get(id)!);
+            const selected = Array.from(dragStateRef.current.draggedNoteIds)
+                .map((id) => dragStateRef.current.currentNotes.get(id)!)
+                .filter(Boolean);
 
             dragStateRef.current = {
                 isDragging: true,
@@ -360,22 +374,26 @@ function useNoteInteraction() {
         (targetNote: Note, isShiftDown: boolean) => {
             const dragState = dragStateRef.current;
 
-            const isTargetSelected = Array.from(
-                dragStateRef.current.draggedNoteIds
-            ).some((id) => id === targetNote.id);
+            const isTargetSelected = dragState.draggedNoteIds.has(
+                targetNote.id
+            );
 
             if (isShiftDown && isTargetSelected) {
+                // Deselect
                 dragState.draggedNoteIds.delete(targetNote.id);
                 dispatch(deselectNote({ id: targetNote.id }));
             } else if (isShiftDown && !isTargetSelected) {
+                // Add to selection
                 dragState.draggedNoteIds.add(targetNote.id);
                 dispatch(selectNote({ id: targetNote.id }));
             } else if (!isShiftDown && !isTargetSelected) {
+                // Replace selection
                 dragState.draggedNoteIds.clear();
                 dragState.draggedNoteIds.add(targetNote.id);
                 dispatch(clearSelection());
                 dispatch(selectNote({ id: targetNote.id }));
             }
+            // If !isShiftDown && isTargetSelected, do nothing (about to drag)
         },
         [dispatch]
     );

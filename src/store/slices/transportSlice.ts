@@ -9,13 +9,10 @@ const initialState: TransportState = {
 };
 
 export const transportSlice = createSlice({
-    name: "viewport",
+    name: "transport",
     initialState,
     reducers: {
         setStartTimeBeats: (state, action) => {
-            console.log("SETTING NEW START TIME");
-            console.log(action.payload);
-
             state.startTimeBeats = action.payload;
         },
     },

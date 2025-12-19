@@ -13,7 +13,7 @@ import { selectStartTimeBeats } from "../store/selectors/transportSelectors";
 
 function PlayheadMask({ ref }: { ref: Ref<Graphics> }) {
     const meterBarHeight = useSelector(selectMeterBarHeight);
-    const { noteGridX, noteGridHeight, noteGridWidth } = useSelector(
+    const { noteGridHeight, noteGridWidth } = useSelector(
         selectNoteGridDimensions
     );
     const playheadHeight = meterBarHeight + noteGridHeight;
@@ -25,7 +25,7 @@ function PlayheadMask({ ref }: { ref: Ref<Graphics> }) {
                 .rect(0, 0, noteGridWidth, playheadHeight)
                 .fill("black");
         },
-        [noteGridX, noteGridWidth, playheadHeight]
+        [noteGridWidth, playheadHeight]
     );
 
     return <pixiGraphics ref={ref} draw={drawMask} />;
@@ -37,13 +37,16 @@ export default function Playhead() {
 
     const playheadHeight = meterBarHeight + noteGridHeight;
 
-    const draw = useCallback((graphics: Graphics) => {
-        graphics
-            .clear()
-            .moveTo(0, 0)
-            .lineTo(0, playheadHeight)
-            .stroke({ color: 0xffffff });
-    }, []);
+    const draw = useCallback(
+        (graphics: Graphics) => {
+            graphics
+                .clear()
+                .moveTo(0, 0)
+                .lineTo(0, playheadHeight)
+                .stroke({ color: 0xffffff });
+        },
+        [playheadHeight]
+    );
 
     const startTime = useSelector(selectStartTimeBeats);
     const maskRef = useRef(null);
@@ -59,7 +62,6 @@ export default function Playhead() {
         } else {
             const delta = Date.now() - playTime.current;
             const bpm = 120;
-            console.log(startTime);
 
             setPlayPos(((bpm / 60) * (delta / 1000) + startTime) * beatWidth);
         }
@@ -80,7 +82,7 @@ export default function Playhead() {
                 }
             }
         },
-        [startTime]
+        [startTime, beatWidth]
     );
 
     useEffect(() => {
