@@ -7,7 +7,24 @@
         <title>Piano Roll</title>
     </head>
     <body>
-        <div id="root"></div>
+        <div class="app-container">
+            <div class="left-panel" id="piano-roll">
+                <div id="root"></div>
+            </div>
+            
+            <div class="right-panel">
+                <h2>Piano Roll</h2>
+                <p>This is a web piano roll. In it, you can add, remove, and modify notes.</p>
+                <ul>
+                    <li>Play and stop with spacebar</li>
+                    <li>Delete selected notes with delete key</li>
+                    <li>Copy selected notes with Ctrl+C and paste with Ctrl+V</li>
+                    <li>Ctrl+Drag to duplicate selected notes</li>
+                    <li>Drag ends of notes to change their duration</li>
+                </ul>
+            </div>
+        </div>
+
         <script type="module" src="/src/main.tsx"></script>
     </body>
 </html>

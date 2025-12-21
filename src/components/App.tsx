@@ -6,11 +6,12 @@ import {
     selectCanvasSize,
     selectSelectedNotes,
 } from "../store/selectors";
-import { deleteNote, updateCanvasSize } from "../store";
+import { addNote, clearSelection, deleteNote, updateCanvasSize } from "../store";
 import { useWindowEvent } from "../hooks";
 import PianoRoll from "./PianoRoll";
 import { Synth } from "../services/synth";
 import { selectStartTimeBeats } from "../store/selectors/transportSelectors";
+import type { Note } from "../types";
 
 export default function App() {
     const canvasSize = useSelector(selectCanvasSize);
@@ -32,12 +33,17 @@ export default function App() {
     }, []);
 
     useEffect(() => {
-        dispatch(updateCanvasSize());
+        const size = updateCanvasSize();
+        console.log(size);
+        dispatch(size);
     }, [dispatch]);
 
     const selectedNotes = useSelector(selectSelectedNotes);
     const allNotes = useSelector(selectAllNotes);
     const startTimeInBeats = useSelector(selectStartTimeBeats);
+
+    // Store copied notes
+    const copiedNotes = useRef<Note[]>([]);
 
     useWindowEvent(
         "keydown",
@@ -53,9 +59,38 @@ export default function App() {
                     synth.current.updateNotes(allNotes);
                     synth.current.play(startTimeInBeats);
                 }
+            } else if ((event.ctrlKey || event.metaKey) && event.key === "c") {
+                // Copy selected notes
+                if (selectedNotes.length > 0) {
+                    copiedNotes.current = selectedNotes.map(note => ({ ...note }));
+                    event.preventDefault();
+                }
+            } else if ((event.ctrlKey || event.metaKey) && event.key === "v") {
+                // Paste notes at playhead
+                if (copiedNotes.current.length > 0) {
+                    // Find the earliest onset time in copied notes
+                    const minOnset = Math.min(...copiedNotes.current.map(n => n.onset));
+                    const offsetFromPlayhead = startTimeInBeats - minOnset;
+
+                    // Clear current selection
+                    dispatch(clearSelection());
+
+                    // Paste notes with offset and collect their IDs to select them
+                    copiedNotes.current.forEach((note) => {
+                        const newOnset = note.onset + offsetFromPlayhead;
+                        // The addNote action automatically selects the new note
+                        dispatch(addNote({
+                            pitch: note.pitch,
+                            onset: newOnset,
+                            duration: note.duration,
+                        }));
+                    });
+
+                    event.preventDefault();
+                }
             }
         },
-        [dispatch, selectedNotes, allNotes]
+        [dispatch, selectedNotes, allNotes, startTimeInBeats]
     );
 
     useWindowEvent(

@@ -19,11 +19,31 @@ body {
     padding: 0;
     height: 100%;
     overflow: hidden;
+    background-color: #252525;
 }
 
 #app {
     margin: 0;
     padding: 0;
-    width: 100vw;
+}
+
+.app-container {
+    display: flex;
     height: 100vh;
+    width: 100%;
+}
+
+.left-panel {
+    margin: 0;
+    padding: 0;
+    flex: 4; 
+    height: 100%;
+    overflow: hidden; 
+}
+
+.right-panel {
+    flex: 1; 
+    height: 100%;
+    padding: 20px;
+    overflow-y: auto; 
 }

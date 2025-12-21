@@ -1,8 +1,9 @@
 import type { Dimensions } from "../types";
 
 export const calculateCanvasSize = (): Dimensions => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    const rect = document.getElementById("piano-roll")!.getBoundingClientRect()
+    const width = rect.width;
+    const height = rect.height;
     return { width: width, height: height };
 };
 

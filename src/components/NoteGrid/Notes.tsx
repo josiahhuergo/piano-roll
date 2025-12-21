@@ -14,6 +14,7 @@ import type { Note } from "../../types";
 import type { Container, FederatedPointerEvent, Graphics } from "pixi.js";
 import { clamp, snapRound } from "../../helpers";
 import {
+    addNote,
     clearSelection,
     deleteNote,
     deselectNote,
@@ -37,7 +38,9 @@ function useNoteInteraction() {
 
     const dragStateRef = useRef({
         isDragging: false,
+        isDuplicating: false,
         draggedNoteIds: new Set<string>(),
+        duplicatedNoteIds: new Set<string>(),
         initialMousePos: { x: 0, y: 0 },
         initialNotePositions: new Map<
             string,
@@ -215,36 +218,73 @@ function useNoteInteraction() {
     const handlePointerUpPos = useCallback(() => {
         const dragState = dragStateRef.current;
 
-        const { updates, deletions } = resolveNoteCollisions(
-            dragState.draggedNoteIds
-        );
-
-        updates.forEach((update) => {
-            dispatch(updateNote(update));
-        });
-
-        deletions.forEach((noteId) => {
-            dispatch(deleteNote({ id: noteId }));
-        });
-
-        dragState.draggedNoteIds.forEach((noteId) => {
-            const note = dragState.currentNotes.get(noteId)!;
-
-            dispatch(
-                updateNote({
-                    id: note.id,
-                    changes: { pitch: note.pitch, onset: note.onset },
-                })
+        if (dragState.isDuplicating) {
+            // For duplication: create new notes at the dragged positions
+            
+            // Clear selection first
+            dispatch(clearSelection());
+            
+            // Create new notes with the final positions
+            dragState.draggedNoteIds.forEach((noteId) => {
+                const note = dragState.currentNotes.get(noteId)!;
+                
+                // Add new note at the dragged position
+                dispatch(addNote({
+                    pitch: note.pitch,
+                    onset: note.onset,
+                    duration: note.duration,
+                }));
+                
+                // Restore the original note's container position
+                const noteContainer = noteContainerRefs.current.get(noteId);
+                const originalPos = dragState.initialNotePositions.get(noteId);
+                if (noteContainer && originalPos) {
+                    noteContainer.x = originalPos.onset * beatWidth;
+                    noteContainer.y = (maxPitch - originalPos.pitch) * laneHeight;
+                }
+                
+                // Restore the cached position too
+                const originalNote = allNotes.find(n => n.id === noteId);
+                if (originalNote) {
+                    dragState.currentNotes.set(noteId, { ...originalNote });
+                }
+            });
+            
+            // The newly added notes are automatically selected by addNote
+        } else {
+            // Normal drag: update positions and handle collisions
+            const { updates, deletions } = resolveNoteCollisions(
+                dragState.draggedNoteIds
             );
-        });
+
+            updates.forEach((update) => {
+                dispatch(updateNote(update));
+            });
+
+            deletions.forEach((noteId) => {
+                dispatch(deleteNote({ id: noteId }));
+            });
+
+            dragState.draggedNoteIds.forEach((noteId) => {
+                const note = dragState.currentNotes.get(noteId)!;
+
+                dispatch(
+                    updateNote({
+                        id: note.id,
+                        changes: { pitch: note.pitch, onset: note.onset },
+                    })
+                );
+            });
+        }
 
         dragState.isDragging = false;
+        dragState.isDuplicating = false;
         dragState.initialNotePositions.clear();
 
         stage.off("pointermove", handlePointerMovePos);
         stage.off("pointerup", handlePointerUpPos);
         stage.off("pointerupoutside", handlePointerUpPos);
-    }, [stage, handlePointerMovePos, dispatch, resolveNoteCollisions]);
+    }, [stage, handlePointerMovePos, dispatch, resolveNoteCollisions, beatWidth, laneHeight, maxPitch, allNotes]);
 
     const startDragPos = useCallback(
         (targetNote: Note, event: FederatedPointerEvent) => {
@@ -258,10 +298,15 @@ function useNoteInteraction() {
                 .filter(Boolean);
 
             const notesToDrag = isTargetSelected ? selected : [targetNote];
+            
+            // Check if Ctrl key is pressed for duplication
+            const isDuplicating = event.ctrlKey || event.metaKey;
 
             dragStateRef.current = {
                 isDragging: true,
+                isDuplicating: isDuplicating,
                 draggedNoteIds: new Set(notesToDrag.map((n) => n.id)),
+                duplicatedNoteIds: new Set(),
                 initialMousePos: { x: event.globalX, y: event.globalY },
                 initialNotePositions: new Map(
                     notesToDrag.map((n) => [
@@ -333,6 +378,7 @@ function useNoteInteraction() {
         });
 
         dragState.isDragging = false;
+        dragState.isDuplicating = false;
         dragState.initialNotePositions.clear();
 
         stage.off("pointermove", handlePointerMoveDur);
@@ -348,7 +394,9 @@ function useNoteInteraction() {
 
             dragStateRef.current = {
                 isDragging: true,
+                isDuplicating: false,
                 draggedNoteIds: dragStateRef.current.draggedNoteIds,
+                duplicatedNoteIds: new Set(),
                 initialMousePos: { x: event.globalX, y: event.globalY },
                 initialNotePositions: new Map(
                     selected.map((n) => [
